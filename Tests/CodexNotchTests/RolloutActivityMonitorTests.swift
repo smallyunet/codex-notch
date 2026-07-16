@@ -18,6 +18,10 @@ final class RolloutActivityMonitorTests: XCTestCase {
             .appendingPathComponent("rollout-active.jsonl")
         let rolloutURL = rootURL.appendingPathComponent("live.jsonl")
         try FileManager.default.copyItem(at: fixtureURL, to: rolloutURL)
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date()],
+            ofItemAtPath: rolloutURL.path
+        )
 
         let store = ActiveSessionStore()
         let monitor = RolloutActivityMonitor(rootURL: rootURL, store: store)
@@ -58,9 +62,14 @@ final class RolloutActivityMonitorTests: XCTestCase {
             .deletingLastPathComponent()
             .appendingPathComponent("Fixtures")
             .appendingPathComponent("rollout-active.jsonl")
+        let rolloutURL = sessionsURL.appendingPathComponent("live.jsonl")
         try FileManager.default.copyItem(
             at: fixtureURL,
-            to: sessionsURL.appendingPathComponent("live.jsonl")
+            to: rolloutURL
+        )
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date()],
+            ofItemAtPath: rolloutURL.path
         )
         monitor.rescan()
 
