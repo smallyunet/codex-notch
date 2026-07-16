@@ -33,10 +33,16 @@ struct NotchView: View {
     @ObservedObject private var model: NotchViewModel
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
+    @AppStorage(QuotaLabelPlacement.storageKey)
+    private var waveLabelPlacementRaw = QuotaLabelPlacement.defaultPlacement.rawValue
     @State private var isPointerInside = false
 
     private var quotaDisplayStyle: QuotaDisplayStyle {
         QuotaDisplayStyle.fromStoredValue(quotaDisplayStyleRaw)
+    }
+
+    private var waveLabelPlacement: QuotaLabelPlacement {
+        QuotaLabelPlacement.fromStoredValue(waveLabelPlacementRaw)
     }
 
     private var isExpanded: Bool {
@@ -82,6 +88,7 @@ struct NotchView: View {
                     subtitle: NotchText.quotaSubtitle(usage: usage),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
+                    waveLabelPlacement: waveLabelPlacement,
                     isHovered: isPointerInside,
                     action: model.onActivateChatGPT
                 )
@@ -94,6 +101,7 @@ struct NotchView: View {
                         : "已运行 \(NotchText.formatDuration(seconds: max(0, model.now.timeIntervalSince(primary.startedAt))))",
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
+                    waveLabelPlacement: waveLabelPlacement,
                     isHovered: isPointerInside,
                     action: { model.onOpenThread(primary.threadID) }
                 )
@@ -104,6 +112,7 @@ struct NotchView: View {
                     subtitle: NotchText.projectName(cwd: session.cwd),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
+                    waveLabelPlacement: waveLabelPlacement,
                     isHovered: isPointerInside,
                     action: { model.onOpenThread(session.threadID) }
                 )
@@ -228,6 +237,7 @@ private struct CompactNotchView: View {
     let subtitle: String
     let usage: UsageSnapshot?
     let quotaDisplayStyle: QuotaDisplayStyle
+    let waveLabelPlacement: QuotaLabelPlacement
     let isHovered: Bool
     let action: () -> Void
 
@@ -247,11 +257,12 @@ private struct CompactNotchView: View {
                         usage: usage,
                         activity: icon.quotaActivity,
                         style: quotaDisplayStyle,
+                        waveLabelPlacement: waveLabelPlacement,
                         isHovered: isHovered
                     )
                     Spacer(minLength: 0)
                 }
-                .frame(width: 38)
+                .frame(width: quotaRegionWidth)
             }
             .contentShape(Rectangle())
         }
@@ -265,6 +276,10 @@ private struct CompactNotchView: View {
             parts.append(NotchText.quotaSubtitle(usage: usage))
         }
         return parts.joined(separator: "，")
+    }
+
+    private var quotaRegionWidth: CGFloat {
+        quotaDisplayStyle == .waveBall && waveLabelPlacement == .beside ? 54 : 38
     }
 }
 
@@ -292,20 +307,65 @@ private struct CompactQuotaView: View {
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
     let style: QuotaDisplayStyle
+    let waveLabelPlacement: QuotaLabelPlacement
     let isHovered: Bool
 
+    private var showsBesideLabel: Bool {
+        style == .waveBall && waveLabelPlacement == .beside
+    }
+
+    private var indicatorDiameter: CGFloat {
+        isHovered ? 22 : 20
+    }
+
+    private var quotaText: String {
+        usage?.weeklyWindow.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—"
+    }
+
+    private var quotaTextColor: Color {
+        guard let window = usage?.weeklyWindow else {
+            return NotchPalette.secondaryText
+        }
+        return QuotaColorScale.color(for: window.remainingPercent)
+    }
+
     var body: some View {
+        Group {
+            if showsBesideLabel {
+                HStack(spacing: 3) {
+                    quotaIndicator
+                    Text(quotaText)
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(quotaTextColor)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .shadow(color: .black.opacity(0.75), radius: 1.2)
+                        .frame(minWidth: 17, alignment: .leading)
+                }
+            } else {
+                quotaIndicator
+            }
+        }
+        .offset(x: -2)
+        .frame(
+            width: showsBesideLabel ? 49 : 28,
+            height: 32,
+            alignment: .leading
+        )
+        .accessibilityHidden(true)
+    }
+
+    private var quotaIndicator: some View {
         QuotaIndicatorView(
             style: style,
             usage: usage,
             activity: activity,
-            diameter: isHovered ? 22 : 20,
+            labelPlacement: waveLabelPlacement,
+            diameter: indicatorDiameter,
             lineWidth: 1.5,
             fontSize: 8.5
         )
-        .offset(x: -2)
-        .frame(width: 28, height: 32)
-        .accessibilityHidden(true)
     }
 }
 
@@ -404,10 +464,16 @@ private struct RunningChatGPTIcon: View {
         ZStack {
             if !reduceMotion {
                 Circle()
-                    .stroke(NotchPalette.accent.opacity(isPulsing ? 0 : 0.55), lineWidth: 1)
+                    .stroke(NotchPalette.accent.opacity(0.28), lineWidth: 1)
                     .frame(width: size + 7, height: size + 7)
-                    .scaleEffect(isPulsing ? 1.22 : 0.78)
+                    .scaleEffect(1.04)
+
+                Circle()
+                    .stroke(NotchPalette.accent.opacity(isPulsing ? 0 : 0.92), lineWidth: 1.35)
+                    .frame(width: size + 10, height: size + 10)
+                    .scaleEffect(isPulsing ? 1.34 : 0.68)
                     .opacity(isPulsing ? 0 : 1)
+                    .shadow(color: NotchPalette.accent.opacity(0.46), radius: 2)
             }
 
             ChatGPTMark(size: size)
@@ -420,7 +486,7 @@ private struct RunningChatGPTIcon: View {
         .animation(
             reduceMotion
                 ? nil
-                : .easeOut(duration: 1.45).repeatForever(autoreverses: false),
+                : .easeOut(duration: 1.05).repeatForever(autoreverses: false),
             value: isPulsing
         )
     }
@@ -430,6 +496,7 @@ private struct QuotaIndicatorView: View {
     let style: QuotaDisplayStyle
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
+    let labelPlacement: QuotaLabelPlacement
     let diameter: CGFloat
     let lineWidth: CGFloat
     let fontSize: CGFloat
@@ -449,6 +516,7 @@ private struct QuotaIndicatorView: View {
             QuotaWaveBall(
                 usage: usage,
                 activity: activity,
+                labelPlacement: labelPlacement,
                 diameter: diameter,
                 lineWidth: lineWidth,
                 fontSize: fontSize
@@ -460,6 +528,7 @@ private struct QuotaIndicatorView: View {
 private struct QuotaWaveBall: View {
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
+    let labelPlacement: QuotaLabelPlacement
     let diameter: CGFloat
     let lineWidth: CGFloat
     let fontSize: CGFloat
@@ -514,18 +583,26 @@ private struct QuotaWaveBall: View {
                     .animation(.easeOut(duration: 0.5), value: completionPulse)
             }
 
-            Text(window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—")
-                .font(.system(
-                    size: window == nil ? fontSize + 1 : fontSize,
-                    weight: .bold,
-                    design: .rounded
-                ))
-                .foregroundStyle(
-                    window == nil ? NotchPalette.secondaryText : NotchPalette.primaryText
-                )
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+            if labelPlacement == .inside {
+                Text(window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—")
+                    .font(.system(
+                        size: window == nil ? fontSize + 1 : fontSize,
+                        weight: .bold,
+                        design: .rounded
+                    ))
+                    .foregroundStyle(
+                        window == nil ? NotchPalette.secondaryText : NotchPalette.primaryText
+                    )
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .shadow(
+                        color: .black.opacity(window == nil ? 0 : 0.9),
+                        radius: 1.2,
+                        x: 0,
+                        y: 0
+                    )
+            }
         }
         .frame(width: diameter, height: diameter)
         .onAppear {
@@ -660,7 +737,9 @@ private struct WeeklyQuotaRing: View {
     private var progressTrim: (from: CGFloat, to: CGFloat) {
         switch style {
         case .clockwiseRing:
-            return (0, displayedProgress)
+            // Keep the filled arc's end fixed at the 12 o'clock anchor. As
+            // the remaining quota drops, the gap grows clockwise from there.
+            return QuotaRingMath.clockwiseTrim(progress: displayedProgress)
         case .waveBall:
             return (0, displayedProgress)
         }
@@ -669,7 +748,7 @@ private struct WeeklyQuotaRing: View {
     private var highlightTrim: (from: CGFloat, to: CGFloat) {
         switch style {
         case .clockwiseRing:
-            return (0, 0.16)
+            return (0.84, 1)
         case .waveBall:
             return (0, 0)
         }
@@ -687,7 +766,7 @@ private struct WeeklyQuotaRing: View {
                         progressColor,
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                     )
-                    .rotationEffect(.degrees(-45))
+                    .rotationEffect(.degrees(QuotaRingMath.clockwiseStartAngleDegrees))
 
                 if activity == .running, !reduceMotion {
                     Circle()
@@ -696,7 +775,12 @@ private struct WeeklyQuotaRing: View {
                             progressColor.opacity(0.96),
                             style: StrokeStyle(lineWidth: lineWidth + 0.8, lineCap: .round)
                         )
-                        .rotationEffect(.degrees((highlightActive ? 360 : 0) - 45))
+                        .rotationEffect(
+                            .degrees(
+                                (highlightActive ? 360 : 0)
+                                    + QuotaRingMath.clockwiseStartAngleDegrees
+                            )
+                        )
                         .shadow(color: progressColor.opacity(0.6), radius: 2)
                         .animation(
                             .linear(duration: 1.45).repeatForever(autoreverses: false),

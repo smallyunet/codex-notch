@@ -3,6 +3,8 @@ import SwiftUI
 struct NotchSettingsView: View {
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
+    @AppStorage(QuotaLabelPlacement.storageKey)
+    private var waveLabelPlacementRaw = QuotaLabelPlacement.defaultPlacement.rawValue
 
     private var selectedStyle: QuotaDisplayStyle {
         QuotaDisplayStyle.fromStoredValue(quotaDisplayStyleRaw)
@@ -12,6 +14,17 @@ struct NotchSettingsView: View {
         Binding(
             get: { selectedStyle },
             set: { quotaDisplayStyleRaw = $0.rawValue }
+        )
+    }
+
+    private var selectedLabelPlacement: QuotaLabelPlacement {
+        QuotaLabelPlacement.fromStoredValue(waveLabelPlacementRaw)
+    }
+
+    private var selectedLabelPlacementBinding: Binding<QuotaLabelPlacement> {
+        Binding(
+            get: { selectedLabelPlacement },
+            set: { waveLabelPlacementRaw = $0.rawValue }
         )
     }
 
@@ -29,12 +42,31 @@ struct NotchSettingsView: View {
                 Text(selectedStyle.subtitle)
                     .font(.callout)
                     .foregroundStyle(.secondary)
+
+                if selectedStyle == .waveBall {
+                    Divider()
+
+                    Picker("数字位置", selection: selectedLabelPlacementBinding) {
+                        ForEach(QuotaLabelPlacement.allCases) { placement in
+                            Label(placement.title, systemImage: placement.systemImage)
+                                .tag(placement)
+                        }
+                    }
+                    .pickerStyle(.radioGroup)
+
+                    Text(selectedLabelPlacement.subtitle)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
             } header: {
                 Text("刘海显示")
             }
 
             Section {
-                QuotaStylePreview(style: selectedStyle)
+                QuotaStylePreview(
+                    style: selectedStyle,
+                    labelPlacement: selectedLabelPlacement
+                )
             } header: {
                 Text("预览")
             }
@@ -56,13 +88,18 @@ struct NotchSettingsView: View {
 
 private struct QuotaStylePreview: View {
     let style: QuotaDisplayStyle
+    let labelPlacement: QuotaLabelPlacement
 
     private let previewPercent = 58.0
     private let previewProgress = 0.58
 
     var body: some View {
         HStack(spacing: 14) {
-            QuotaStylePreviewGraphic(style: style, progress: previewProgress)
+            QuotaStylePreviewGraphic(
+                style: style,
+                labelPlacement: labelPlacement,
+                progress: previewProgress
+            )
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Codex")
@@ -91,22 +128,43 @@ private struct QuotaStylePreview: View {
 
 private struct QuotaStylePreviewGraphic: View {
     let style: QuotaDisplayStyle
+    let labelPlacement: QuotaLabelPlacement
     let progress: CGFloat
 
     var body: some View {
+        Group {
+            if style == .waveBall && labelPlacement == .beside {
+                HStack(spacing: 5) {
+                    graphic
+                    previewQuotaText
+                }
+            } else {
+                graphic
+            }
+        }
+        .frame(
+            width: style == .waveBall && labelPlacement == .beside ? 78 : 52,
+            height: 52,
+            alignment: .leading
+        )
+    }
+
+    @ViewBuilder
+    private var graphic: some View {
         ZStack {
             Circle()
                 .fill(Color.white.opacity(0.1))
 
             switch style {
             case .clockwiseRing:
+                let trim = QuotaRingMath.clockwiseTrim(progress: progress)
                 Circle()
-                    .trim(from: 0, to: progress)
+                    .trim(from: trim.from, to: trim.to)
                     .stroke(
                         QuotaColorScale.color(for: progress * 100),
                         style: StrokeStyle(lineWidth: 3, lineCap: .round)
                     )
-                    .rotationEffect(.degrees(-45))
+                    .rotationEffect(.degrees(QuotaRingMath.clockwiseStartAngleDegrees))
             case .waveBall:
                 PreviewWaveShape(fillProgress: progress, phase: 0)
                     .fill(QuotaColorScale.color(for: progress * 100))
@@ -115,12 +173,19 @@ private struct QuotaStylePreviewGraphic: View {
                     .stroke(Color.white.opacity(0.18), lineWidth: 1)
             }
 
-            Text("58")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .monospacedDigit()
+            if style == .clockwiseRing || labelPlacement == .inside {
+                previewQuotaText
+            }
         }
         .frame(width: 52, height: 52)
+    }
+
+    private var previewQuotaText: some View {
+        Text("58")
+            .font(.system(size: 10, weight: .bold, design: .rounded))
+            .foregroundStyle(.white)
+            .monospacedDigit()
+            .shadow(color: .black.opacity(0.9), radius: 1.2)
     }
 }
 
