@@ -40,6 +40,7 @@ final class NotchGeometryTests: XCTestCase {
 
         XCTAssertGreaterThanOrEqual(layout.expandedFrame.minX, metrics.visibleFrame.minX)
         XCTAssertLessThanOrEqual(layout.expandedFrame.maxX, metrics.visibleFrame.maxX)
+        XCTAssertEqual(layout.expandedFrame.maxY, metrics.frame.maxY, accuracy: 0.1)
     }
 
     func testDefaultCompactFrameStaysCloseToNotchGap() {
@@ -54,10 +55,11 @@ final class NotchGeometryTests: XCTestCase {
         let layout = NotchGeometry.layout(metrics: metrics)
 
         XCTAssertEqual(layout.mode, .notch)
-        XCTAssertEqual(layout.compactFrame.width, 271, accuracy: 0.1)
+        XCTAssertEqual(layout.compactFrame.width, 241, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.height, 32, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.midX, 755.5, accuracy: 0.1)
         XCTAssertEqual(layout.compactFrame.maxY, 982, accuracy: 0.1)
+        XCTAssertEqual(layout.expandedFrame.maxY, 982, accuracy: 0.1)
     }
 
     func testMissingAuxiliaryAreasUseMenuBarFallback() {

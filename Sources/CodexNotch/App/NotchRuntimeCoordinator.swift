@@ -15,6 +15,8 @@ final class NotchRuntimeCoordinator {
     static let sessionPollInterval: TimeInterval = 0.5
     static let rolloutRescanInterval: TimeInterval = 5
     static let usageRefreshInterval: TimeInterval = 60
+    static let hoverExpandDelay: TimeInterval = 0.18
+    static let hoverCollapseDelay: TimeInterval = 0.12
 
     private let windowController: NotchWindowController
     private let frontmostMonitor: FrontmostAppMonitor
@@ -33,11 +35,14 @@ final class NotchRuntimeCoordinator {
     private var started = false
     private var isChatGPTFrontmost = false
     private var isHovered = false
+    private var isPointerInside = false
     private var activeSessions: [SessionActivity] = []
     private var recentCompletion: CompletedSession?
     private var usage: UsageSnapshot?
     private var lastUsageRequestAt: Date?
     private var usageRequestID: UUID?
+    private var hoverExpandWorkItem: DispatchWorkItem?
+    private var hoverCollapseWorkItem: DispatchWorkItem?
 
     init(
         windowController: NotchWindowController = NotchWindowController(),
@@ -131,6 +136,12 @@ final class NotchRuntimeCoordinator {
         usageTask?.cancel()
         usageTask = nil
         usageRequestID = nil
+        hoverExpandWorkItem?.cancel()
+        hoverExpandWorkItem = nil
+        hoverCollapseWorkItem?.cancel()
+        hoverCollapseWorkItem = nil
+        isPointerInside = false
+        isHovered = false
 
         frontmostMonitor.stop()
         rolloutMonitor.stop()
@@ -142,6 +153,8 @@ final class NotchRuntimeCoordinator {
         sessionTimer?.invalidate()
         rolloutRescanTimer?.invalidate()
         usageTask?.cancel()
+        hoverExpandWorkItem?.cancel()
+        hoverCollapseWorkItem?.cancel()
         frontmostMonitor.stop()
         rolloutMonitor.stop()
     }
@@ -220,9 +233,43 @@ final class NotchRuntimeCoordinator {
     }
 
     private func setHovered(_ hovered: Bool) {
-        guard isHovered != hovered else { return }
-        isHovered = hovered
-        render()
+        isPointerInside = hovered
+
+        if hovered {
+            hoverCollapseWorkItem?.cancel()
+            hoverCollapseWorkItem = nil
+
+            guard !isHovered, hoverExpandWorkItem == nil else { return }
+            let workItem = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.hoverExpandWorkItem = nil
+                guard self.started, self.isPointerInside, !self.isHovered else { return }
+                self.isHovered = true
+                self.render()
+            }
+            hoverExpandWorkItem = workItem
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + Self.hoverExpandDelay,
+                execute: workItem
+            )
+            return
+        }
+
+        hoverExpandWorkItem?.cancel()
+        hoverExpandWorkItem = nil
+        guard isHovered else { return }
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.hoverCollapseWorkItem = nil
+            guard self.isHovered, !self.isPointerInside else { return }
+            self.isHovered = false
+            self.render()
+        }
+        hoverCollapseWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + Self.hoverCollapseDelay,
+            execute: workItem
+        )
     }
 
     private func openThread(_ threadID: String) {

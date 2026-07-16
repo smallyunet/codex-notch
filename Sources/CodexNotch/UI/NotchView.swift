@@ -31,6 +31,12 @@ final class NotchViewModel: ObservableObject {
 
 struct NotchView: View {
     @ObservedObject private var model: NotchViewModel
+    @State private var isPointerInside = false
+
+    private var isExpanded: Bool {
+        if case .expanded = model.state { return true }
+        return false
+    }
 
     init(
         state: NotchPresentationState,
@@ -65,6 +71,7 @@ struct NotchView: View {
                     title: "Codex",
                     subtitle: NotchText.quotaSubtitle(usage: usage),
                     usage: usage,
+                    isHovered: isPointerInside,
                     action: model.onActivateChatGPT
                 )
             case let .workingCompact(primary, count, usage):
@@ -75,6 +82,7 @@ struct NotchView: View {
                         ? "\(count) 个任务"
                         : "已运行 \(NotchText.formatDuration(seconds: max(0, model.now.timeIntervalSince(primary.startedAt))))",
                     usage: usage,
+                    isHovered: isPointerInside,
                     action: { model.onOpenThread(primary.threadID) }
                 )
             case let .completedCompact(session):
@@ -83,6 +91,7 @@ struct NotchView: View {
                     title: "Codex 已完成",
                     subtitle: NotchText.projectName(cwd: session.cwd),
                     usage: nil,
+                    isHovered: isPointerInside,
                     action: { model.onOpenThread(session.threadID) }
                 )
             case let .expanded(content):
@@ -96,12 +105,75 @@ struct NotchView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(NotchPalette.background)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(NotchPalette.border, lineWidth: 1)
+        .clipShape(
+            NotchAttachedShape(
+                shoulderDepth: 6,
+                bottomRadius: isExpanded ? 22 : 14
+            )
+        )
+        .shadow(
+            color: isExpanded ? Color.black.opacity(0.48) : Color.clear,
+            radius: 12,
+            y: 6
+        )
+        .onHover { hovering in
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
+                isPointerInside = hovering
+            }
+            model.onHoverChanged(hovering)
         }
-        .onHover(perform: model.onHoverChanged)
+    }
+}
+
+private struct NotchAttachedShape: Shape {
+    var shoulderDepth: CGFloat
+    var bottomRadius: CGFloat
+
+    var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        get { AnimatablePair(shoulderDepth, bottomRadius) }
+        set {
+            shoulderDepth = newValue.first
+            bottomRadius = newValue.second
+        }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let shoulder = min(max(0, shoulderDepth), rect.height / 2)
+        let radius = min(
+            max(0, bottomRadius),
+            max(0, rect.height - shoulder),
+            max(0, rect.width / 2 - shoulder)
+        )
+        let curve = CGFloat(0.55)
+
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addCurve(
+            to: CGPoint(x: rect.maxX - shoulder, y: rect.minY + shoulder),
+            control1: CGPoint(x: rect.maxX - shoulder * curve, y: rect.minY),
+            control2: CGPoint(x: rect.maxX - shoulder, y: rect.minY + shoulder * curve)
+        )
+        path.addLine(to: CGPoint(x: rect.maxX - shoulder, y: rect.maxY - radius))
+        path.addCurve(
+            to: CGPoint(x: rect.maxX - shoulder - radius, y: rect.maxY),
+            control1: CGPoint(x: rect.maxX - shoulder, y: rect.maxY - radius * curve),
+            control2: CGPoint(x: rect.maxX - shoulder - radius * curve, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + shoulder + radius, y: rect.maxY))
+        path.addCurve(
+            to: CGPoint(x: rect.minX + shoulder, y: rect.maxY - radius),
+            control1: CGPoint(x: rect.minX + shoulder + radius * curve, y: rect.maxY),
+            control2: CGPoint(x: rect.minX + shoulder, y: rect.maxY - radius * curve)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + shoulder, y: rect.minY + shoulder))
+        path.addCurve(
+            to: CGPoint(x: rect.minX, y: rect.minY),
+            control1: CGPoint(x: rect.minX + shoulder, y: rect.minY + shoulder * curve),
+            control2: CGPoint(x: rect.minX + shoulder * curve, y: rect.minY)
+        )
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -132,27 +204,31 @@ private struct CompactNotchView: View {
     let title: String
     let subtitle: String
     let usage: UsageSnapshot?
+    let isHovered: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 0) {
-                CompactAppIconView(status: icon)
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    CompactAppIconView(status: icon, isHovered: isHovered)
+                }
+                .frame(width: 28)
 
                 Spacer(minLength: 0)
 
-                switch icon {
-                case .completed:
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(NotchPalette.success)
-                        .frame(width: 26, height: 26)
-                case .quota, .working:
-                    CompactUsageRing(window: usage?.windows.first)
+                HStack(spacing: 0) {
+                    switch icon {
+                    case .completed:
+                        CompactCompletionView()
+                    case .quota, .working:
+                        CompactQuotaView(window: usage?.windows.first, isHovered: isHovered)
+                    }
+                    Spacer(minLength: 0)
                 }
+                .frame(width: 28)
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 3)
             .contentShape(Rectangle())
         }
         .buttonStyle(NotchButtonStyle())
@@ -170,38 +246,33 @@ private struct CompactNotchView: View {
 
 private struct CompactAppIconView: View {
     let status: CompactNotchView.IconKind
+    let isHovered: Bool
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            Group {
-                if let image = ChatGPTIconAsset.image {
-                    Image(nsImage: image)
-                        .resizable()
-                        .interpolation(.high)
-                        .scaledToFit()
-                } else {
-                    Image(systemName: status.fallbackSystemName)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(NotchPalette.primaryText)
-                }
+        ZStack {
+            if let image = ChatGPTIconAsset.templateImage {
+                Image(nsImage: image)
+                    .renderingMode(.template)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .foregroundStyle(NotchPalette.primaryText.opacity(0.92))
+            } else {
+                Image(systemName: status.fallbackSystemName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(NotchPalette.primaryText.opacity(0.92))
             }
-            .frame(width: 19, height: 19)
-
-            Circle()
-                .fill(status.color)
-                .frame(width: 6, height: 6)
-                .overlay {
-                    Circle().stroke(NotchPalette.background, lineWidth: 1.5)
-                }
-                .offset(x: 1, y: 1)
         }
-        .frame(width: 22, height: 22)
+        .frame(width: isHovered ? 17.5 : 16.5, height: isHovered ? 17.5 : 16.5)
+        .offset(x: 2)
+        .frame(width: 28, height: 32)
         .accessibilityHidden(true)
     }
 }
 
-private struct CompactUsageRing: View {
+private struct CompactQuotaView: View {
     let window: UsageWindow?
+    let isHovered: Bool
 
     private var remainingPercent: Double {
         window?.remainingPercent ?? 0
@@ -216,37 +287,57 @@ private struct CompactUsageRing: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(NotchPalette.track, lineWidth: 2)
+                .stroke(NotchPalette.track, lineWidth: 1.5)
 
             if window != nil {
                 Circle()
                     .trim(from: 0, to: remainingPercent / 100)
                     .stroke(
                         progressColor,
-                        style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 1.5, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
             }
 
             Text(window.map { NotchText.percent($0.remainingPercent) } ?? "—")
-                .font(.system(size: 7.5, weight: .bold, design: .rounded))
+                .font(.system(size: window == nil ? 8 : 6.2, weight: .bold, design: .rounded))
                 .foregroundStyle(window == nil ? NotchPalette.secondaryText : NotchPalette.primaryText)
                 .monospacedDigit()
+                .lineLimit(1)
         }
-        .frame(width: 26, height: 26)
+        .frame(width: isHovered ? 22 : 20, height: isHovered ? 22 : 20)
+        .offset(x: -2)
+        .frame(width: 28, height: 32)
         .accessibilityHidden(true)
     }
 }
 
+private struct CompactCompletionView: View {
+    var body: some View {
+        Image(systemName: "checkmark")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(NotchPalette.success)
+            .offset(x: -2)
+            .frame(width: 28, height: 32)
+            .accessibilityHidden(true)
+    }
+}
+
 private enum ChatGPTIconAsset {
-    static let image: NSImage? = {
+    static let templateImage: NSImage? = {
         let workspace = NSWorkspace.shared
         guard let appURL = workspace.urlForApplication(
             withBundleIdentifier: AppIdentity.chatGPTCodexBundleIdentifier
         ) else {
             return nil
         }
-        return workspace.icon(forFile: appURL.path)
+        guard let resourceURL = Bundle(url: appURL)?.url(
+            forResource: "chatgptTemplate",
+            withExtension: "png"
+        ) else {
+            return nil
+        }
+        return NSImage(contentsOf: resourceURL)
     }()
 }
 
@@ -296,7 +387,8 @@ private struct ExpandedNotchView: View {
             }
         }
         .padding(.horizontal, 13)
-        .padding(.vertical, 10)
+        .padding(.top, 40)
+        .padding(.bottom, 10)
     }
 }
 
@@ -415,8 +507,7 @@ private struct UsageWindowRow: View {
 }
 
 private enum NotchPalette {
-    static let background = Color.black.opacity(0.96)
-    static let border = Color.white.opacity(0.1)
+    static let background = Color.black
     static let primaryText = Color.white
     static let secondaryText = Color.white.opacity(0.6)
     static let chip = Color.white.opacity(0.13)
