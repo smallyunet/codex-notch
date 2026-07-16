@@ -37,6 +37,16 @@ struct ExpandedContent: Equatable, Sendable {
     let sessions: [SessionActivity]
     let conversations: [ConversationSummary]
     let usage: UsageSnapshot?
+
+    func limitingRecentConversations(
+        to limit: RecentConversationLimit
+    ) -> ExpandedContent {
+        ExpandedContent(
+            sessions: sessions,
+            conversations: Array(conversations.prefix(limit.rawValue)),
+            usage: usage
+        )
+    }
 }
 
 enum NotchPresentationState: Equatable {
@@ -45,6 +55,15 @@ enum NotchPresentationState: Equatable {
     case workingCompact(primary: SessionActivity, count: Int, usage: UsageSnapshot?)
     case completedCompact(SessionActivity, usage: UsageSnapshot?)
     case expanded(ExpandedContent)
+}
+
+extension NotchPresentationState {
+    func limitingRecentConversations(
+        to limit: RecentConversationLimit
+    ) -> NotchPresentationState {
+        guard case let .expanded(content) = self else { return self }
+        return .expanded(content.limitingRecentConversations(to: limit))
+    }
 }
 
 struct NotchPresentationInput: Equatable {

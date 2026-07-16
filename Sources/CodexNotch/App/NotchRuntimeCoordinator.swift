@@ -27,6 +27,7 @@ final class NotchRuntimeCoordinator {
     private let urlSession: URLSession
     private let usageEndpoint: URL
     private let nowProvider: () -> Date
+    private let userDefaults: UserDefaults
     private let viewModel: NotchViewModel
 
     private var sessionTimer: Timer?
@@ -43,6 +44,7 @@ final class NotchRuntimeCoordinator {
     private var usageRequestID: UUID?
     private var hoverExpandWorkItem: DispatchWorkItem?
     private var hoverCollapseWorkItem: DispatchWorkItem?
+    private var preferencesObserver: NSObjectProtocol?
 
     init(
         windowController: NotchWindowController = NotchWindowController(),
@@ -52,7 +54,8 @@ final class NotchRuntimeCoordinator {
         sessionStore: ActiveSessionStore = ActiveSessionStore(),
         urlSession: URLSession = .shared,
         usageEndpoint: URL = CodexUsageClient.defaultEndpoint,
-        nowProvider: @escaping () -> Date = { .now }
+        nowProvider: @escaping () -> Date = { .now },
+        userDefaults: UserDefaults = .standard
     ) {
         self.windowController = windowController
         self.frontmostMonitor = frontmostMonitor
@@ -62,6 +65,7 @@ final class NotchRuntimeCoordinator {
         self.urlSession = urlSession
         self.usageEndpoint = usageEndpoint
         self.nowProvider = nowProvider
+        self.userDefaults = userDefaults
         self.viewModel = NotchViewModel()
 
         let codexHome = CodexHomeLocator.home(
@@ -77,6 +81,7 @@ final class NotchRuntimeCoordinator {
     func start() {
         guard !started else { return }
         started = true
+        observePreferenceChanges()
 
         viewModel.onOpenThread = { [weak self] threadID in
             self?.openThread(threadID)
@@ -140,6 +145,7 @@ final class NotchRuntimeCoordinator {
         hoverExpandWorkItem = nil
         hoverCollapseWorkItem?.cancel()
         hoverCollapseWorkItem = nil
+        stopObservingPreferenceChanges()
         isPointerInside = false
         isHovered = false
 
@@ -155,6 +161,7 @@ final class NotchRuntimeCoordinator {
         usageTask?.cancel()
         hoverExpandWorkItem?.cancel()
         hoverCollapseWorkItem?.cancel()
+        stopObservingPreferenceChanges()
         frontmostMonitor.stop()
         rolloutMonitor.stop()
     }
@@ -289,6 +296,41 @@ final class NotchRuntimeCoordinator {
         _ = threadNavigator.activateCodex()
     }
 
+    private var recentConversationLimit: RecentConversationLimit {
+        RecentConversationLimit.fromStoredValue(
+            userDefaults.integer(forKey: RecentConversationLimit.storageKey)
+        )
+    }
+
+    private func observePreferenceChanges() {
+        guard preferencesObserver == nil else { return }
+        preferencesObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: userDefaults,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self, self.started else { return }
+            self.render()
+        }
+    }
+
+    private func stopObservingPreferenceChanges() {
+        if let preferencesObserver {
+            NotificationCenter.default.removeObserver(preferencesObserver)
+        }
+        preferencesObserver = nil
+    }
+
+    private func expandedContentSize(for state: NotchPresentationState) -> NSSize {
+        guard case let .expanded(content) = state,
+              !content.conversations.isEmpty else {
+            return NotchExpandedLayout.taskContentSize(conversationCount: 2)
+        }
+        return NotchExpandedLayout.taskContentSize(
+            conversationCount: content.conversations.count
+        )
+    }
+
     private func render(now: Date? = nil) {
         let renderDate = now ?? nowProvider()
         let input = NotchPresentationInput(
@@ -304,10 +346,11 @@ final class NotchRuntimeCoordinator {
             windowController.window?.orderOut(nil)
             return
         }
-        let layout = NotchGeometry.layout(metrics: NotchScreenMetrics(screen: screen))
+        let metrics = NotchScreenMetrics(screen: screen)
+        let baseLayout = NotchGeometry.layout(metrics: metrics)
         let state = NotchPresentationReducer.reduce(input)
         let stateForWindow: NotchPresentationState
-        if layout.mode == .menuBarFallback {
+        if baseLayout.mode == .menuBarFallback {
             stateForWindow = NotchPresentationReducer.reduce(
                 NotchPresentationInput(
                     now: input.now,
@@ -321,12 +364,19 @@ final class NotchRuntimeCoordinator {
         } else {
             stateForWindow = state
         }
+        let displayState = stateForWindow.limitingRecentConversations(
+            to: recentConversationLimit
+        )
+        let layout = NotchGeometry.layout(
+            metrics: metrics,
+            expandedSize: expandedContentSize(for: displayState)
+        )
         viewModel.update(
-            state: stateForWindow,
+            state: displayState,
             now: renderDate,
             cameraSafeAreaInset: max(0, screen.safeAreaInsets.top)
         )
-        windowController.apply(layout: layout, state: stateForWindow)
+        windowController.apply(layout: layout, state: displayState)
     }
 
     private func preferredScreen() -> NSScreen? {

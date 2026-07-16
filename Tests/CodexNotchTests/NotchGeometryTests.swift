@@ -74,6 +74,43 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(layout.expandedFrame.maxY, 982, accuracy: 0.1)
     }
 
+    func testConversationCountOnlyExtendsTheCardBelowTheNotchAnchor() {
+        let metrics = NotchScreenMetrics(
+            frame: NSRect(x: 0, y: 0, width: 1512, height: 982),
+            visibleFrame: NSRect(x: 0, y: 0, width: 1512, height: 949),
+            safeAreaInsets: NSEdgeInsets(top: 32, left: 0, bottom: 0, right: 0),
+            auxiliaryTopLeftArea: NSRect(x: 0, y: 950, width: 663, height: 32),
+            auxiliaryTopRightArea: NSRect(x: 848, y: 950, width: 664, height: 32)
+        )
+        let oneConversationLayout = NotchGeometry.layout(
+            metrics: metrics,
+            expandedSize: NotchExpandedLayout.taskContentSize(conversationCount: 1)
+        )
+        let fiveConversationLayout = NotchGeometry.layout(
+            metrics: metrics,
+            expandedSize: NotchExpandedLayout.taskContentSize(conversationCount: 5)
+        )
+
+        XCTAssertEqual(
+            oneConversationLayout.compactFrame.maxY,
+            oneConversationLayout.expandedFrame.maxY,
+            accuracy: 0.1
+        )
+        XCTAssertEqual(
+            fiveConversationLayout.compactFrame.maxY,
+            fiveConversationLayout.expandedFrame.maxY,
+            accuracy: 0.1
+        )
+        XCTAssertGreaterThan(
+            fiveConversationLayout.expandedFrame.height,
+            oneConversationLayout.expandedFrame.height
+        )
+        XCTAssertLessThan(
+            fiveConversationLayout.expandedFrame.minY,
+            oneConversationLayout.expandedFrame.minY
+        )
+    }
+
     func testMissingAuxiliaryAreasUseMenuBarFallback() {
         let metrics = NotchScreenMetrics(
             frame: NSRect(x: 0, y: 0, width: 1920, height: 1080),

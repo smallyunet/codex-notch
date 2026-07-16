@@ -29,4 +29,15 @@ final class QuotaDisplayStyleTests: XCTestCase {
         XCTAssertEqual(QuotaRingMath.clockwiseStartAngleDegrees, -90)
     }
 
+    func testRecentConversationLimitOffersOneThroughFiveAndFallsBackToTwo() {
+        XCTAssertEqual(
+            RecentConversationLimit.allCases.map(\.rawValue),
+            [1, 2, 3, 4, 5]
+        )
+        XCTAssertEqual(
+            RecentConversationLimit.fromStoredValue(99),
+            .two
+        )
+    }
+
 }

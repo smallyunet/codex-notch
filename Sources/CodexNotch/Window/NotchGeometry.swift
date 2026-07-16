@@ -53,6 +53,28 @@ enum NotchCompactLayout {
     static let height: CGFloat = 32
 }
 
+enum NotchExpandedLayout {
+    static let width: CGFloat = 420
+    static let quotaContentHeight: CGFloat = 94
+    static let twoConversationContentHeight: CGFloat = 176
+    static let conversationRowHeight: CGFloat = 30
+    static let conversationSeparatorHeight: CGFloat = 0.5
+
+    static func taskContentHeight(conversationCount: Int) -> CGFloat {
+        let count = max(1, conversationCount)
+        return twoConversationContentHeight
+            + CGFloat(count - 2)
+            * (conversationRowHeight + conversationSeparatorHeight)
+    }
+
+    static func taskContentSize(conversationCount: Int) -> NSSize {
+        NSSize(
+            width: width,
+            height: taskContentHeight(conversationCount: conversationCount)
+        )
+    }
+}
+
 enum NotchGeometry {
     static func layout(
         metrics: NotchScreenMetrics,
@@ -60,8 +82,14 @@ enum NotchGeometry {
             width: NotchCompactLayout.minimumWidth,
             height: NotchCompactLayout.height
         ),
-        quotaExpandedSize: NSSize = NSSize(width: 420, height: 94),
-        expandedSize: NSSize = NSSize(width: 420, height: 176)
+        quotaExpandedSize: NSSize = NSSize(
+            width: NotchExpandedLayout.width,
+            height: NotchExpandedLayout.quotaContentHeight
+        ),
+        expandedSize: NSSize = NSSize(
+            width: NotchExpandedLayout.width,
+            height: NotchExpandedLayout.twoConversationContentHeight
+        )
     ) -> NotchLayout {
         guard let left = metrics.auxiliaryTopLeftArea,
               let right = metrics.auxiliaryTopRightArea,

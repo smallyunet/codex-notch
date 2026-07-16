@@ -168,6 +168,40 @@ final class NotchPresentationReducerTests: XCTestCase {
         XCTAssertTrue(content.conversations.allSatisfy(\.activity.isRunning))
     }
 
+    func testExpandedStateUsesConfiguredRecentConversationLimit() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let sessions = (0..<5).map { index in
+            makeSession(
+                id: "thread-\(index)",
+                at: now.addingTimeInterval(TimeInterval(-index))
+            )
+        }
+        let state = NotchPresentationReducer.reduce(
+            NotchPresentationInput(
+                now: now,
+                isChatGPTFrontmost: false,
+                activeSessions: sessions,
+                recentCompletions: [],
+                usage: nil,
+                isHovered: true
+            )
+        )
+
+        guard case let .expanded(content) = state else {
+            return XCTFail("Expected expanded state")
+        }
+        XCTAssertEqual(content.conversations.count, 5)
+
+        guard case let .expanded(limitedContent) = state.limitingRecentConversations(
+            to: .three
+        ) else {
+            return XCTFail("Expected expanded state")
+        }
+        XCTAssertEqual(limitedContent.conversations.map(\.threadID), [
+            "thread-0", "thread-1", "thread-2"
+        ])
+    }
+
     private func makeSession(
         id: String,
         title: String? = nil,

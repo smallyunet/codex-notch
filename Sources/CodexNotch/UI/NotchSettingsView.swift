@@ -3,6 +3,8 @@ import SwiftUI
 struct NotchSettingsView: View {
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
+    @AppStorage(RecentConversationLimit.storageKey)
+    private var recentConversationLimitRaw = RecentConversationLimit.defaultLimit.rawValue
 
     private var selectedStyle: QuotaDisplayStyle {
         QuotaDisplayStyle.fromStoredValue(quotaDisplayStyleRaw)
@@ -12,6 +14,17 @@ struct NotchSettingsView: View {
         Binding(
             get: { selectedStyle },
             set: { quotaDisplayStyleRaw = $0.rawValue }
+        )
+    }
+
+    private var recentConversationLimit: RecentConversationLimit {
+        RecentConversationLimit.fromStoredValue(recentConversationLimitRaw)
+    }
+
+    private var recentConversationLimitBinding: Binding<RecentConversationLimit> {
+        Binding(
+            get: { recentConversationLimit },
+            set: { recentConversationLimitRaw = $0.rawValue }
         )
     }
 
@@ -38,6 +51,22 @@ struct NotchSettingsView: View {
             }
 
             Section {
+                Picker("最近聊天条数", selection: recentConversationLimitBinding) {
+                    ForEach(RecentConversationLimit.allCases) { limit in
+                        Text(limit.title)
+                            .tag(limit)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Text("展开卡片最多显示 \(recentConversationLimit.rawValue) 条最近聊天，并从刘海向下延展。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("展开卡片")
+            }
+
+            Section {
                 QuotaStylePreview(style: selectedStyle)
             } header: {
                 Text("预览")
@@ -55,6 +84,9 @@ struct NotchSettingsView: View {
         .formStyle(.grouped)
         .frame(width: 430)
         .padding(.vertical, 12)
+        .onAppear {
+            SettingsWindowPresenter.bringToFront()
+        }
     }
 }
 

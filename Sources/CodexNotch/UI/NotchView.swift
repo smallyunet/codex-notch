@@ -125,7 +125,9 @@ struct NotchView: View {
                 .transition(.opacity)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The panel's top edge is the physical-notch anchor. Keep the SwiftUI
+        // content on that same edge while the AppKit window grows downward.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .contentShape(Rectangle())
         .background(isHidden ? Color.clear : NotchPalette.background)
         .clipShape(
@@ -918,6 +920,7 @@ private struct ExpandedNotchView: View {
         // moves down, so the progress bar and text stay on drawable pixels.
         .padding(.top, cameraSafeAreaInset + 8)
         .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 

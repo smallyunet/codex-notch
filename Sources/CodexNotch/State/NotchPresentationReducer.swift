@@ -53,7 +53,11 @@ enum NotchPresentationReducer {
 
         return ExpandedContent(
             sessions: sessions,
-            conversations: Array(conversations.prefix(2)),
+            // Preserve enough data for the user's display preference. The
+            // coordinator applies that preference immediately before render.
+            conversations: Array(
+                conversations.prefix(RecentConversationLimit.allCases.count)
+            ),
             usage: input.usage
         )
     }

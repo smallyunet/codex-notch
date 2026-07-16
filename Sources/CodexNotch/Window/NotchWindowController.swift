@@ -81,7 +81,7 @@ final class NotchWindowController: NSWindowController {
         let wasVisible = panel.isVisible
         let shouldAnimateFrame = wasVisible
             && lastFrameKind != nil
-            && lastFrameKind != frameKind
+            && !panel.frame.equalTo(frame)
         if shouldAnimateFrame {
             animateFrameChange(of: panel, to: frame)
         } else {
@@ -104,6 +104,9 @@ final class NotchWindowController: NSWindowController {
 
     private func animateFrameChange(of panel: NSPanel, to frame: NSRect) {
         let isExpanding = frame.height > panel.frame.height
+        // NotchGeometry gives compact and expanded frames the same maxY. By
+        // interpolating their complete frames, AppKit keeps that physical-notch
+        // edge fixed and the card grows only below it.
         NSAnimationContext.runAnimationGroup { context in
             context.duration = isExpanding
                 ? FrameAnimation.expandDuration
