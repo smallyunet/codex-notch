@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var runtimeCoordinator: NotchRuntimeCoordinator?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        QuotaLabelPlacement.migrateLegacyValue()
         NSApp.setActivationPolicy(.accessory)
         runtimeCoordinator = NotchRuntimeCoordinator()
         runtimeCoordinator?.start()

@@ -34,15 +34,15 @@ struct NotchView: View {
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
     @AppStorage(QuotaLabelPlacement.storageKey)
-    private var waveLabelPlacementRaw = QuotaLabelPlacement.defaultPlacement.rawValue
+    private var quotaLabelPlacementRaw = QuotaLabelPlacement.defaultPlacement.rawValue
     @State private var isPointerInside = false
 
     private var quotaDisplayStyle: QuotaDisplayStyle {
         QuotaDisplayStyle.fromStoredValue(quotaDisplayStyleRaw)
     }
 
-    private var waveLabelPlacement: QuotaLabelPlacement {
-        QuotaLabelPlacement.fromStoredValue(waveLabelPlacementRaw)
+    private var quotaLabelPlacement: QuotaLabelPlacement {
+        QuotaLabelPlacement.fromStoredValue(quotaLabelPlacementRaw)
     }
 
     private var isExpanded: Bool {
@@ -88,7 +88,7 @@ struct NotchView: View {
                     subtitle: NotchText.quotaSubtitle(usage: usage),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
-                    waveLabelPlacement: waveLabelPlacement,
+                    quotaLabelPlacement: quotaLabelPlacement,
                     isHovered: isPointerInside,
                     action: model.onActivateChatGPT
                 )
@@ -101,7 +101,7 @@ struct NotchView: View {
                         : "已运行 \(NotchText.formatDuration(seconds: max(0, model.now.timeIntervalSince(primary.startedAt))))",
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
-                    waveLabelPlacement: waveLabelPlacement,
+                    quotaLabelPlacement: quotaLabelPlacement,
                     isHovered: isPointerInside,
                     action: { model.onOpenThread(primary.threadID) }
                 )
@@ -112,7 +112,7 @@ struct NotchView: View {
                     subtitle: NotchText.projectName(cwd: session.cwd),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
-                    waveLabelPlacement: waveLabelPlacement,
+                    quotaLabelPlacement: quotaLabelPlacement,
                     isHovered: isPointerInside,
                     action: { model.onOpenThread(session.threadID) }
                 )
@@ -237,35 +237,31 @@ private struct CompactNotchView: View {
     let subtitle: String
     let usage: UsageSnapshot?
     let quotaDisplayStyle: QuotaDisplayStyle
-    let waveLabelPlacement: QuotaLabelPlacement
+    let quotaLabelPlacement: QuotaLabelPlacement
     let isHovered: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    Spacer(minLength: 0)
-                    CompactAppIconView(status: icon)
-                }
-                .frame(width: 38)
+                CompactAppIconView(status: icon)
+                    .frame(
+                        width: NotchCompactLayout.sideWingWidth,
+                        height: NotchCompactLayout.height
+                    )
 
                 Spacer(minLength: 0)
 
-                HStack(spacing: 0) {
-                    CompactQuotaView(
-                        usage: usage,
-                        activity: icon.quotaActivity,
-                        style: quotaDisplayStyle,
-                        waveLabelPlacement: waveLabelPlacement,
-                        isHovered: isHovered
-                    )
-                    Spacer(minLength: 0)
-                }
-                // Keep the quota control inside the right safe area. The
-                // beside-label variant is compressed to this same 38pt wing
-                // instead of being pushed left underneath the camera.
-                .frame(width: 38)
+                // Keep the entire quota control centered in the right safe
+                // area. Both styles use the same wing, so an optional number
+                // never moves the visual weight toward the camera cutout.
+                CompactQuotaView(
+                    usage: usage,
+                    activity: icon.quotaActivity,
+                    style: quotaDisplayStyle,
+                    labelPlacement: quotaLabelPlacement,
+                    isHovered: isHovered
+                )
             }
             .contentShape(Rectangle())
         }
@@ -297,8 +293,7 @@ private struct CompactAppIconView: View {
                 ChatGPTMark(size: 18, fallbackSystemName: status.fallbackSystemName)
             }
         }
-        .offset(x: 2)
-        .frame(width: 28, height: 32)
+        .frame(width: 28, height: NotchCompactLayout.height)
         .accessibilityHidden(true)
     }
 }
@@ -307,18 +302,15 @@ private struct CompactQuotaView: View {
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
     let style: QuotaDisplayStyle
-    let waveLabelPlacement: QuotaLabelPlacement
+    let labelPlacement: QuotaLabelPlacement
     let isHovered: Bool
 
     private var showsBesideLabel: Bool {
-        style == .waveBall && waveLabelPlacement == .beside
+        labelPlacement == .beside
     }
 
     private var indicatorDiameter: CGFloat {
-        if showsBesideLabel {
-            return isHovered ? 21 : 19
-        }
-        return isHovered ? 22 : 20
+        isHovered ? 24 : 22
     }
 
     private var quotaText: String {
@@ -335,27 +327,26 @@ private struct CompactQuotaView: View {
     var body: some View {
         Group {
             if showsBesideLabel {
-                HStack(spacing: 3) {
+                HStack(spacing: 4) {
                     quotaIndicator
                     Text(quotaText)
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(quotaTextColor)
                         .monospacedDigit()
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .minimumScaleFactor(0.8)
                         .shadow(color: .black.opacity(0.75), radius: 1.2)
-                        .frame(width: 15, alignment: .leading)
+                        .frame(width: 22, alignment: .leading)
                 }
-                .padding(.leading, 1)
             } else {
                 quotaIndicator
             }
         }
-        .offset(x: showsBesideLabel ? 0 : -2)
+        .frame(maxWidth: .infinity, alignment: .center)
         .frame(
-            width: showsBesideLabel ? 38 : 28,
-            height: 32,
-            alignment: .leading
+            width: NotchCompactLayout.sideWingWidth,
+            height: NotchCompactLayout.height,
+            alignment: .center
         )
         .accessibilityHidden(true)
     }
@@ -365,10 +356,10 @@ private struct CompactQuotaView: View {
             style: style,
             usage: usage,
             activity: activity,
-            labelPlacement: waveLabelPlacement,
+            labelPlacement: labelPlacement,
             diameter: indicatorDiameter,
-            lineWidth: 1.5,
-            fontSize: 8.5
+            lineWidth: 1.75,
+            fontSize: 9
         )
     }
 }
@@ -512,6 +503,7 @@ private struct QuotaIndicatorView: View {
                 style: style,
                 usage: usage,
                 activity: activity,
+                labelPlacement: labelPlacement,
                 diameter: diameter,
                 lineWidth: lineWidth,
                 fontSize: fontSize
@@ -712,6 +704,7 @@ private struct WeeklyQuotaRing: View {
     let style: QuotaDisplayStyle
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
+    let labelPlacement: QuotaLabelPlacement
     let diameter: CGFloat
     let lineWidth: CGFloat
     let fontSize: CGFloat
@@ -803,18 +796,26 @@ private struct WeeklyQuotaRing: View {
                 }
             }
 
-            Text(window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—")
-                .font(.system(
-                    size: window == nil ? fontSize + 1 : fontSize,
-                    weight: .bold,
-                    design: .rounded
-                ))
-                .foregroundStyle(
-                    window == nil ? NotchPalette.secondaryText : NotchPalette.primaryText
-                )
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+            if labelPlacement == .inside {
+                Text(window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—")
+                    .font(.system(
+                        size: window == nil ? fontSize + 1 : fontSize,
+                        weight: .bold,
+                        design: .rounded
+                    ))
+                    .foregroundStyle(
+                        window == nil ? NotchPalette.secondaryText : NotchPalette.primaryText
+                    )
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .shadow(
+                        color: .black.opacity(window == nil ? 0 : 0.9),
+                        radius: 1.2,
+                        x: 0,
+                        y: 0
+                    )
+            }
         }
         .frame(width: diameter, height: diameter)
         .onAppear {

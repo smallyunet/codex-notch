@@ -4,7 +4,7 @@ struct NotchSettingsView: View {
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
     @AppStorage(QuotaLabelPlacement.storageKey)
-    private var waveLabelPlacementRaw = QuotaLabelPlacement.defaultPlacement.rawValue
+    private var quotaLabelPlacementRaw = QuotaLabelPlacement.defaultPlacement.rawValue
 
     private var selectedStyle: QuotaDisplayStyle {
         QuotaDisplayStyle.fromStoredValue(quotaDisplayStyleRaw)
@@ -18,13 +18,13 @@ struct NotchSettingsView: View {
     }
 
     private var selectedLabelPlacement: QuotaLabelPlacement {
-        QuotaLabelPlacement.fromStoredValue(waveLabelPlacementRaw)
+        QuotaLabelPlacement.fromStoredValue(quotaLabelPlacementRaw)
     }
 
     private var selectedLabelPlacementBinding: Binding<QuotaLabelPlacement> {
         Binding(
             get: { selectedLabelPlacement },
-            set: { waveLabelPlacementRaw = $0.rawValue }
+            set: { quotaLabelPlacementRaw = $0.rawValue }
         )
     }
 
@@ -43,21 +43,19 @@ struct NotchSettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
 
-                if selectedStyle == .waveBall {
-                    Divider()
+                Divider()
 
-                    Picker("数字位置", selection: selectedLabelPlacementBinding) {
-                        ForEach(QuotaLabelPlacement.allCases) { placement in
-                            Label(placement.title, systemImage: placement.systemImage)
-                                .tag(placement)
-                        }
+                Picker("数字位置", selection: selectedLabelPlacementBinding) {
+                    ForEach(QuotaLabelPlacement.allCases) { placement in
+                        Label(placement.title, systemImage: placement.systemImage)
+                            .tag(placement)
                     }
-                    .pickerStyle(.radioGroup)
-
-                    Text(selectedLabelPlacement.subtitle)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
                 }
+                .pickerStyle(.radioGroup)
+
+                Text(selectedLabelPlacement.subtitle)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             } header: {
                 Text("刘海显示")
             }
@@ -133,7 +131,7 @@ private struct QuotaStylePreviewGraphic: View {
 
     var body: some View {
         Group {
-            if style == .waveBall && labelPlacement == .beside {
+            if labelPlacement == .beside {
                 HStack(spacing: 5) {
                     graphic
                     previewQuotaText
@@ -143,7 +141,7 @@ private struct QuotaStylePreviewGraphic: View {
             }
         }
         .frame(
-            width: style == .waveBall && labelPlacement == .beside ? 78 : 52,
+            width: labelPlacement == .beside ? 78 : 52,
             height: 52,
             alignment: .leading
         )
@@ -173,7 +171,7 @@ private struct QuotaStylePreviewGraphic: View {
                     .stroke(Color.white.opacity(0.18), lineWidth: 1)
             }
 
-            if style == .clockwiseRing || labelPlacement == .inside {
+            if labelPlacement == .inside {
                 previewQuotaText
             }
         }

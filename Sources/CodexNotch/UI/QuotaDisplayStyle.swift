@@ -45,7 +45,8 @@ enum QuotaLabelPlacement: String, CaseIterable, Identifiable, Sendable {
     case inside
     case beside
 
-    static let storageKey = "waveQuotaLabelPlacement"
+    static let storageKey = "quotaLabelPlacement"
+    static let legacyStorageKey = "waveQuotaLabelPlacement"
     static let defaultPlacement: QuotaLabelPlacement = .inside
 
     var id: String { rawValue }
@@ -53,18 +54,18 @@ enum QuotaLabelPlacement: String, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .inside:
-            return "球内数字"
+            return "指标内数字"
         case .beside:
-            return "球旁数字"
+            return "指标旁数字"
         }
     }
 
     var subtitle: String {
         switch self {
         case .inside:
-            return "数字叠在液面上，刘海最紧凑"
+            return "数字显示在圆环或波浪球内，刘海最紧凑"
         case .beside:
-            return "数字放在波浪球右侧，动画完整可见"
+            return "数字显示在圆环或波浪球右侧，指标保持完整"
         }
     }
 
@@ -79,6 +80,15 @@ enum QuotaLabelPlacement: String, CaseIterable, Identifiable, Sendable {
 
     static func fromStoredValue(_ rawValue: String) -> QuotaLabelPlacement {
         Self(rawValue: rawValue) ?? Self.defaultPlacement
+    }
+
+    static func migrateLegacyValue(in defaults: UserDefaults = .standard) {
+        guard defaults.object(forKey: storageKey) == nil,
+              let legacyValue = defaults.string(forKey: legacyStorageKey) else {
+            return
+        }
+
+        defaults.set(fromStoredValue(legacyValue).rawValue, forKey: storageKey)
     }
 }
 

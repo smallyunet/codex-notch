@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import CodexNotch
 
@@ -29,23 +30,43 @@ final class QuotaDisplayStyleTests: XCTestCase {
         XCTAssertEqual(QuotaRingMath.clockwiseStartAngleDegrees, -90)
     }
 
-    func testWaveLabelPlacementHasInsideAndBesideChoices() {
+    func testQuotaLabelPlacementHasInsideAndBesideChoices() {
         XCTAssertEqual(
             QuotaLabelPlacement.allCases,
             [.inside, .beside]
         )
     }
 
-    func testStoredWaveLabelPlacementFallsBackToInside() {
+    func testStoredQuotaLabelPlacementFallsBackToInside() {
         XCTAssertEqual(
             QuotaLabelPlacement.fromStoredValue("unknown"),
             .inside
         )
     }
 
-    func testWaveLabelPlacementMetadataIsUserFacing() {
-        XCTAssertEqual(QuotaLabelPlacement.inside.title, "球内数字")
-        XCTAssertEqual(QuotaLabelPlacement.beside.title, "球旁数字")
+    func testQuotaLabelPlacementMetadataIsUserFacing() {
+        XCTAssertEqual(QuotaLabelPlacement.inside.title, "指标内数字")
+        XCTAssertEqual(QuotaLabelPlacement.beside.title, "指标旁数字")
         XCTAssertFalse(QuotaLabelPlacement.beside.subtitle.isEmpty)
+    }
+
+    func testLegacyWavePlacementMigratesToGenericSetting() throws {
+        let suiteName = "QuotaDisplayStyleTests-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            throw XCTSkip("Unable to create isolated defaults suite")
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        defaults.set(
+            QuotaLabelPlacement.beside.rawValue,
+            forKey: QuotaLabelPlacement.legacyStorageKey
+        )
+
+        QuotaLabelPlacement.migrateLegacyValue(in: defaults)
+
+        XCTAssertEqual(
+            defaults.string(forKey: QuotaLabelPlacement.storageKey),
+            QuotaLabelPlacement.beside.rawValue
+        )
     }
 }

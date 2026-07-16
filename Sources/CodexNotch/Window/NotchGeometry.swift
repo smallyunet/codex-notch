@@ -47,10 +47,19 @@ struct NotchLayout: Equatable {
     let expandedFrame: NSRect
 }
 
+enum NotchCompactLayout {
+    static let sideWingWidth: CGFloat = 52
+    static let minimumWidth: CGFloat = 289
+    static let height: CGFloat = 32
+}
+
 enum NotchGeometry {
     static func layout(
         metrics: NotchScreenMetrics,
-        compactSize: NSSize = NSSize(width: 264, height: 32),
+        compactSize: NSSize = NSSize(
+            width: NotchCompactLayout.minimumWidth,
+            height: NotchCompactLayout.height
+        ),
         quotaExpandedSize: NSSize = NSSize(width: 420, height: 94),
         expandedSize: NSSize = NSSize(width: 420, height: 176)
     ) -> NotchLayout {
@@ -71,10 +80,13 @@ enum NotchGeometry {
 
         let centerX = (left.maxX + right.minX) / 2
         // The auxiliary areas describe the safe regions beside the camera
-        // cutout. Keep the compact badge close to that gap instead of using a
-        // wide fixed pill that covers the user's window.
+        // cutout. Keep a full 52pt wing on each side: it gives a circular
+        // indicator and its optional number independent breathing room.
         let notchWidth = right.minX - left.maxX
-        let compactWidth = min(compactSize.width, max(224, notchWidth + 76))
+        let compactWidth = max(
+            compactSize.width,
+            notchWidth + NotchCompactLayout.sideWingWidth * 2
+        )
         let compactHeight = min(
             compactSize.height,
             max(28, metrics.safeAreaInsets.top)
