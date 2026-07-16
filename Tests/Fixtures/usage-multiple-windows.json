@@ -1,0 +1,16 @@
+{
+  "plan_type": "plus",
+  "primary_window": {
+    "used_percent": 42,
+    "limit_window_seconds": 18000,
+    "reset_at": "2030-01-01T00:00:00Z"
+  },
+  "secondary_window": {
+    "used_percent": 5,
+    "limit_window_seconds": 604800,
+    "reset_at": 1893456000
+  },
+  "rate_limit_reset_credits": {
+    "available_count": 1
+  }
+}
