@@ -65,7 +65,13 @@ final class NotchTextTests: XCTestCase {
 
     func testResetCountdownIncludesDaysAndSeconds() {
         let now = Date(timeIntervalSince1970: 1_000)
-        let resetAt = now.addingTimeInterval(2 * 86_400 + 3 * 3_600 + 4 * 60 + 5)
+        let twoDays: TimeInterval = 2 * 86_400
+        let threeHours: TimeInterval = 3 * 3_600
+        let fourMinutes: TimeInterval = 4 * 60
+        let fiveSeconds: TimeInterval = 5
+        let resetAt = now.addingTimeInterval(
+            twoDays + threeHours + fourMinutes + fiveSeconds
+        )
 
         XCTAssertEqual(NotchText.resetCountdown(resetAt: resetAt, now: now), "2天 03:04:05")
         XCTAssertEqual(NotchText.resetCountdown(resetAt: now, now: now), "00:00:00")
