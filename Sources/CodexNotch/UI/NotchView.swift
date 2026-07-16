@@ -131,6 +131,7 @@ struct NotchView: View {
                     cameraSafeAreaInset: model.cameraSafeAreaInset,
                     onOpenThread: model.onOpenThread
                 )
+                .transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -152,6 +153,7 @@ struct NotchView: View {
                 lineWidth: 0.5
             )
         }
+        .animation(.easeInOut(duration: 0.24), value: isExpanded)
         .onHover { hovering in
             withAnimation(.spring(response: 0.28, dampingFraction: 0.84)) {
                 isPointerInside = hovering

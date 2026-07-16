@@ -12,6 +12,24 @@ final class NotchWindowController: NSWindowController {
     private var statusItem: NSStatusItem?
     private var lastFrameKind: PresentationFrameKind?
 
+    private enum FrameAnimation {
+        static let expandDuration: TimeInterval = 0.34
+        static let collapseDuration: TimeInterval = 0.26
+
+        static let expandCurve = CAMediaTimingFunction(
+            controlPoints: 0.22,
+            0.94,
+            0.34,
+            1
+        )
+        static let collapseCurve = CAMediaTimingFunction(
+            controlPoints: 0.48,
+            0,
+            0.76,
+            0.72
+        )
+    }
+
     init() {
         let panel = NotchPanel(contentRect: NSRect(x: 0, y: 0, width: 1, height: 1))
         super.init(window: panel)
@@ -64,7 +82,11 @@ final class NotchWindowController: NSWindowController {
         let shouldAnimateFrame = wasVisible
             && lastFrameKind != nil
             && lastFrameKind != frameKind
-        panel.setFrame(frame, display: true, animate: shouldAnimateFrame)
+        if shouldAnimateFrame {
+            animateFrameChange(of: panel, to: frame)
+        } else {
+            panel.setFrame(frame, display: true)
+        }
         panel.ignoresMouseEvents = false
         if wasVisible {
             panel.orderFrontRegardless()
@@ -78,6 +100,19 @@ final class NotchWindowController: NSWindowController {
             }
         }
         lastFrameKind = frameKind
+    }
+
+    private func animateFrameChange(of panel: NSPanel, to frame: NSRect) {
+        let isExpanding = frame.height > panel.frame.height
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = isExpanding
+                ? FrameAnimation.expandDuration
+                : FrameAnimation.collapseDuration
+            context.timingFunction = isExpanding
+                ? FrameAnimation.expandCurve
+                : FrameAnimation.collapseCurve
+            panel.animator().setFrame(frame, display: true)
+        }
     }
 
     deinit {
