@@ -3,5 +3,7 @@
 DerivedData/
 *.xcuserstate
 CodexNotch.app/
+dist/
+*.zip
 *.dSYM/
 .DS_Store
