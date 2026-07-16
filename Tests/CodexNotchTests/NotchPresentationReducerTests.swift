@@ -11,7 +11,7 @@ final class NotchPresentationReducerTests: XCTestCase {
                 now: now,
                 isChatGPTFrontmost: false,
                 activeSessions: [task],
-                recentCompletion: nil,
+                recentCompletions: [],
                 usage: nil,
                 isHovered: false
             )
@@ -32,7 +32,7 @@ final class NotchPresentationReducerTests: XCTestCase {
                 now: now,
                 isChatGPTFrontmost: true,
                 activeSessions: [task],
-                recentCompletion: nil,
+                recentCompletions: [],
                 usage: nil,
                 isHovered: false
             )
@@ -44,24 +44,28 @@ final class NotchPresentationReducerTests: XCTestCase {
         XCTFail("Expected working compact state")
     }
 
-    func testRecentCompletionIsHiddenWhenNoTaskIsActive() {
+    func testRecentCompletionUsesCompletedCompactState() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let task = makeSession(id: "thread-completed", at: now.addingTimeInterval(-2))
+        let completion = CompletedSession(session: task, completedAt: now.addingTimeInterval(-2))
         let state = NotchPresentationReducer.reduce(
             NotchPresentationInput(
                 now: now,
                 isChatGPTFrontmost: false,
                 activeSessions: [],
-                recentCompletion: CompletedSession(session: task, completedAt: now.addingTimeInterval(-2)),
+                recentCompletions: [completion],
                 usage: nil,
                 isHovered: false
             )
         )
 
-        XCTAssertEqual(state, .hidden)
+        guard case let .completedCompact(session, _) = state else {
+            return XCTFail("Expected completed compact state")
+        }
+        XCTAssertEqual(session.threadID, "thread-completed")
     }
 
-    func testFrontmostChatGPTRemainsHiddenWhenNoTaskIsActive() {
+    func testCompletedStateExpiresBackToPersistentQuota() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let task = makeSession(id: "thread-completed", at: now.addingTimeInterval(-4))
         let completion = CompletedSession(session: task, completedAt: now.addingTimeInterval(-4))
@@ -72,7 +76,7 @@ final class NotchPresentationReducerTests: XCTestCase {
                 now: now,
                 isChatGPTFrontmost: true,
                 activeSessions: [],
-                recentCompletion: completion,
+                recentCompletions: [completion],
                 usage: usage,
                 isHovered: false
             )
@@ -82,26 +86,52 @@ final class NotchPresentationReducerTests: XCTestCase {
                 now: now,
                 isChatGPTFrontmost: false,
                 activeSessions: [],
-                recentCompletion: completion,
+                recentCompletions: [completion],
                 usage: usage,
                 isHovered: false
             )
         )
 
-        XCTAssertEqual(frontmostState, .hidden)
-        XCTAssertEqual(hiddenState, .hidden)
+        XCTAssertEqual(frontmostState, .quotaCompact(usage))
+        XCTAssertEqual(hiddenState, .quotaCompact(usage))
+    }
+
+    func testIdleQuotaIsAlwaysVisible() {
+        let usage = UsageSnapshot(
+            windows: [UsageWindow(id: "weekly", kind: .weekly, usedPercent: 25)]
+        )
+
+        let state = NotchPresentationReducer.reduce(
+            NotchPresentationInput(
+                now: Date(timeIntervalSince1970: 2_000_000_000),
+                isChatGPTFrontmost: false,
+                activeSessions: [],
+                recentCompletions: [],
+                usage: usage,
+                isHovered: false
+            )
+        )
+
+        XCTAssertEqual(state, .quotaCompact(usage))
     }
 
     func testHoverWithoutAnActiveTaskExpandsWeeklyQuota() {
         let usage = UsageSnapshot(
             windows: [UsageWindow(id: "weekly", kind: .weekly, usedPercent: 25)]
         )
+        let completed = makeSession(
+            id: "thread-recent",
+            title: "最近的对话",
+            at: Date(timeIntervalSince1970: 1_999_999_940)
+        )
         let state = NotchPresentationReducer.reduce(
             NotchPresentationInput(
                 now: Date(timeIntervalSince1970: 2_000_000_000),
                 isChatGPTFrontmost: true,
                 activeSessions: [],
-                recentCompletion: nil,
+                recentCompletions: [
+                    CompletedSession(session: completed, completedAt: completed.lastActivityAt)
+                ],
                 usage: usage,
                 isHovered: true
             )
@@ -111,6 +141,7 @@ final class NotchPresentationReducerTests: XCTestCase {
             return XCTFail("Expected idle quota expansion")
         }
         XCTAssertTrue(content.sessions.isEmpty)
+        XCTAssertEqual(content.conversations.map(\.title), ["最近的对话"])
         XCTAssertEqual(content.usage, usage)
     }
 
@@ -123,7 +154,7 @@ final class NotchPresentationReducerTests: XCTestCase {
                 now: now,
                 isChatGPTFrontmost: false,
                 activeSessions: [older, newer],
-                recentCompletion: nil,
+                recentCompletions: [],
                 usage: nil,
                 isHovered: true
             )
@@ -133,12 +164,19 @@ final class NotchPresentationReducerTests: XCTestCase {
             return XCTFail("Expected expanded state")
         }
         XCTAssertEqual(content.sessions.map(\.threadID), ["thread-new", "thread-old"])
+        XCTAssertEqual(content.conversations.map(\.threadID), ["thread-new", "thread-old"])
+        XCTAssertTrue(content.conversations.allSatisfy(\.activity.isRunning))
     }
 
-    private func makeSession(id: String, at date: Date) -> SessionActivity {
+    private func makeSession(
+        id: String,
+        title: String? = nil,
+        at date: Date
+    ) -> SessionActivity {
         SessionActivity(
             threadID: id,
             turnID: "turn-\(id)",
+            title: title,
             cwd: "/tmp/project",
             originator: "Codex Desktop",
             startedAt: date,

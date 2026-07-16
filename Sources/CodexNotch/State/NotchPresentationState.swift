@@ -35,6 +35,7 @@ struct ConversationSummary: Equatable, Identifiable, Sendable {
 
 struct ExpandedContent: Equatable, Sendable {
     let sessions: [SessionActivity]
+    let conversations: [ConversationSummary]
     let usage: UsageSnapshot?
 }
 
@@ -42,7 +43,7 @@ enum NotchPresentationState: Equatable {
     case hidden
     case quotaCompact(UsageSnapshot?)
     case workingCompact(primary: SessionActivity, count: Int, usage: UsageSnapshot?)
-    case completedCompact(SessionActivity)
+    case completedCompact(SessionActivity, usage: UsageSnapshot?)
     case expanded(ExpandedContent)
 }
 
@@ -50,7 +51,7 @@ struct NotchPresentationInput: Equatable {
     let now: Date
     let isChatGPTFrontmost: Bool
     let activeSessions: [SessionActivity]
-    let recentCompletion: CompletedSession?
+    let recentCompletions: [CompletedSession]
     let usage: UsageSnapshot?
     let isHovered: Bool
 }

@@ -89,12 +89,12 @@ struct NotchView: View {
                     isHovered: isPointerInside,
                     action: { model.onOpenThread(primary.threadID) }
                 )
-            case let .completedCompact(session):
+            case let .completedCompact(session, usage):
                 CompactNotchView(
                     icon: .completed,
                     title: "Codex 已完成",
                     subtitle: NotchText.projectName(cwd: session.cwd),
-                    usage: nil,
+                    usage: usage,
                     isHovered: isPointerInside,
                     action: { model.onOpenThread(session.threadID) }
                 )

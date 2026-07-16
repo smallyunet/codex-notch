@@ -126,8 +126,11 @@ final class NotchWindowController: NSWindowController {
             menu.addItem(NSMenuItem.separator())
             menu.addItem(actionItem(title: "打开当前任务", representedObject: primary.threadID))
 
-        case let .completedCompact(session):
+        case let .completedCompact(session, usage):
             menu.addItem(disabledItem(title: "Codex 已完成"))
+            if let usage, !usage.windows.isEmpty {
+                menu.addItem(disabledItem(title: NotchText.quotaSubtitle(usage: usage)))
+            }
             menu.addItem(actionItem(
                 title: "打开 \(NotchText.projectName(cwd: session.cwd))",
                 representedObject: session.threadID

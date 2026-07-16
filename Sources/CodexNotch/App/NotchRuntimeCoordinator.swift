@@ -37,7 +37,7 @@ final class NotchRuntimeCoordinator {
     private var isHovered = false
     private var isPointerInside = false
     private var activeSessions: [SessionActivity] = []
-    private var recentCompletion: CompletedSession?
+    private var recentCompletions: [CompletedSession] = []
     private var usage: UsageSnapshot?
     private var lastUsageRequestAt: Date?
     private var usageRequestID: UUID?
@@ -162,8 +162,7 @@ final class NotchRuntimeCoordinator {
     private func handleTimerTick() {
         pollSessions()
         let now = nowProvider()
-        if (isChatGPTFrontmost || !activeSessions.isEmpty),
-           now.timeIntervalSince(lastUsageRequestAt ?? .distantPast) >= Self.usageRefreshInterval {
+        if now.timeIntervalSince(lastUsageRequestAt ?? .distantPast) >= Self.usageRefreshInterval {
             refreshUsage()
         }
     }
@@ -185,10 +184,7 @@ final class NotchRuntimeCoordinator {
         if hadActiveSessions, activeSessions.isEmpty {
             resetHoverState()
         }
-        if let completion = snapshot.latestCompletion,
-           completion.completedAt > (recentCompletion?.completedAt ?? .distantPast) {
-            recentCompletion = completion
-        }
+        recentCompletions = snapshot.recentCompletions
         render(now: now)
     }
 
@@ -299,7 +295,7 @@ final class NotchRuntimeCoordinator {
             now: renderDate,
             isChatGPTFrontmost: isChatGPTFrontmost,
             activeSessions: activeSessions,
-            recentCompletion: recentCompletion,
+            recentCompletions: recentCompletions,
             usage: usage,
             isHovered: isHovered
         )
@@ -317,7 +313,7 @@ final class NotchRuntimeCoordinator {
                     now: input.now,
                     isChatGPTFrontmost: input.isChatGPTFrontmost,
                     activeSessions: input.activeSessions,
-                    recentCompletion: input.recentCompletion,
+                    recentCompletions: input.recentCompletions,
                     usage: input.usage,
                     isHovered: true
                 )
