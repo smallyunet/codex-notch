@@ -31,7 +31,14 @@ final class NotchViewModel: ObservableObject {
 
 struct NotchView: View {
     @ObservedObject private var model: NotchViewModel
+    @AppStorage(QuotaDisplayStyle.storageKey)
+    private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
+    @Environment(\.openSettings) private var openSettings
     @State private var isPointerInside = false
+
+    private var quotaDisplayStyle: QuotaDisplayStyle {
+        QuotaDisplayStyle.fromStoredValue(quotaDisplayStyleRaw)
+    }
 
     private var isExpanded: Bool {
         if case .expanded = model.state { return true }
@@ -75,6 +82,7 @@ struct NotchView: View {
                     title: "Codex",
                     subtitle: NotchText.quotaSubtitle(usage: usage),
                     usage: usage,
+                    quotaDisplayStyle: quotaDisplayStyle,
                     isHovered: isPointerInside,
                     action: model.onActivateChatGPT
                 )
@@ -86,6 +94,7 @@ struct NotchView: View {
                         ? "\(count) 个任务"
                         : "已运行 \(NotchText.formatDuration(seconds: max(0, model.now.timeIntervalSince(primary.startedAt))))",
                     usage: usage,
+                    quotaDisplayStyle: quotaDisplayStyle,
                     isHovered: isPointerInside,
                     action: { model.onOpenThread(primary.threadID) }
                 )
@@ -95,6 +104,7 @@ struct NotchView: View {
                     title: "Codex 已完成",
                     subtitle: NotchText.projectName(cwd: session.cwd),
                     usage: usage,
+                    quotaDisplayStyle: quotaDisplayStyle,
                     isHovered: isPointerInside,
                     action: { model.onOpenThread(session.threadID) }
                 )
@@ -130,6 +140,13 @@ struct NotchView: View {
                 isPointerInside = hovering
             }
             model.onHoverChanged(hovering)
+        }
+        .contextMenu {
+            Button {
+                openSettings()
+            } label: {
+                Label("设置…", systemImage: "gearshape")
+            }
         }
     }
 }
@@ -213,6 +230,7 @@ private struct CompactNotchView: View {
     let title: String
     let subtitle: String
     let usage: UsageSnapshot?
+    let quotaDisplayStyle: QuotaDisplayStyle
     let isHovered: Bool
     let action: () -> Void
 
@@ -231,6 +249,7 @@ private struct CompactNotchView: View {
                     CompactQuotaView(
                         usage: usage,
                         activity: icon.quotaActivity,
+                        style: quotaDisplayStyle,
                         isHovered: isHovered
                     )
                     Spacer(minLength: 0)
@@ -275,10 +294,12 @@ private struct CompactAppIconView: View {
 private struct CompactQuotaView: View {
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
+    let style: QuotaDisplayStyle
     let isHovered: Bool
 
     var body: some View {
-        WeeklyQuotaRing(
+        QuotaIndicatorView(
+            style: style,
             usage: usage,
             activity: activity,
             diameter: isHovered ? 22 : 20,
@@ -408,7 +429,209 @@ private struct RunningChatGPTIcon: View {
     }
 }
 
+private struct QuotaIndicatorView: View {
+    let style: QuotaDisplayStyle
+    let usage: UsageSnapshot?
+    let activity: QuotaRingActivity
+    let diameter: CGFloat
+    let lineWidth: CGFloat
+    let fontSize: CGFloat
+
+    var body: some View {
+        switch style {
+        case .clockwiseRing:
+            WeeklyQuotaRing(
+                style: style,
+                usage: usage,
+                activity: activity,
+                diameter: diameter,
+                lineWidth: lineWidth,
+                fontSize: fontSize
+            )
+        case .waveBall:
+            QuotaWaveBall(
+                usage: usage,
+                activity: activity,
+                diameter: diameter,
+                lineWidth: lineWidth,
+                fontSize: fontSize
+            )
+        }
+    }
+}
+
+private struct QuotaWaveBall: View {
+    let usage: UsageSnapshot?
+    let activity: QuotaRingActivity
+    let diameter: CGFloat
+    let lineWidth: CGFloat
+    let fontSize: CGFloat
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var displayedProgress: CGFloat = 0
+    @State private var completionPulse = false
+
+    private var window: UsageWindow? {
+        usage?.weeklyWindow
+    }
+
+    private var remainingPercent: Double {
+        window?.remainingPercent ?? 0
+    }
+
+    private var targetProgress: CGFloat {
+        CGFloat(min(max(remainingPercent, 0), 100) / 100)
+    }
+
+    private var progressColor: Color {
+        guard window != nil else { return NotchPalette.secondaryText }
+        return QuotaColorScale.color(for: remainingPercent)
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(NotchPalette.track)
+
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                QuotaWaveShape(
+                    fillProgress: displayedProgress,
+                    phase: reduceMotion
+                        ? 0
+                        : context.date.timeIntervalSinceReferenceDate * waveSpeed
+                )
+                .fill(progressColor)
+                .clipShape(Circle())
+            }
+
+            Circle()
+                .stroke(NotchPalette.border, lineWidth: lineWidth)
+
+            if activity == .completed, !reduceMotion {
+                Circle()
+                    .stroke(
+                        progressColor.opacity(completionPulse ? 0 : 0.7),
+                        lineWidth: 1
+                    )
+                    .scaleEffect(completionPulse ? 1.32 : 0.84)
+                    .animation(.easeOut(duration: 0.5), value: completionPulse)
+            }
+
+            Text(window.map { NotchText.quotaNumber($0.remainingPercent) } ?? "—")
+                .font(.system(
+                    size: window == nil ? fontSize + 1 : fontSize,
+                    weight: .bold,
+                    design: .rounded
+                ))
+                .foregroundStyle(
+                    window == nil ? NotchPalette.secondaryText : NotchPalette.primaryText
+                )
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(width: diameter, height: diameter)
+        .onAppear {
+            updateProgress(forAppearance: true)
+            updateActivityAnimation()
+        }
+        .onChange(of: remainingPercent) { _, _ in
+            updateProgress()
+        }
+        .onChange(of: activity) { _, _ in
+            updateActivityAnimation()
+        }
+        .onChange(of: reduceMotion) { _, _ in
+            updateActivityAnimation()
+        }
+    }
+
+    private var waveSpeed: Double {
+        switch activity {
+        case .running:
+            return 2.0
+        case .idle, .completed:
+            return 0.65
+        }
+    }
+
+    private func updateProgress(forAppearance: Bool = false) {
+        if reduceMotion {
+            displayedProgress = targetProgress
+        } else if forAppearance, activity == .running {
+            displayedProgress = 1
+            withAnimation(.easeOut(duration: 0.9)) {
+                displayedProgress = targetProgress
+            }
+        } else if forAppearance {
+            displayedProgress = targetProgress
+        } else {
+            withAnimation(.easeInOut(duration: 0.42)) {
+                displayedProgress = targetProgress
+            }
+        }
+    }
+
+    private func updateActivityAnimation() {
+        guard !reduceMotion else {
+            completionPulse = false
+            displayedProgress = targetProgress
+            return
+        }
+
+        switch activity {
+        case .idle, .running:
+            completionPulse = false
+            updateProgress()
+        case .completed:
+            displayedProgress = targetProgress
+            completionPulse = false
+            withAnimation(.easeOut(duration: 0.5)) {
+                completionPulse = true
+            }
+        }
+    }
+}
+
+private struct QuotaWaveShape: Shape {
+    var fillProgress: CGFloat
+    var phase: Double
+
+    var animatableData: AnimatablePair<CGFloat, Double> {
+        get { AnimatablePair(fillProgress, phase) }
+        set {
+            fillProgress = newValue.first
+            phase = newValue.second
+        }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let progress = min(max(fillProgress, 0), 1)
+        let level = rect.maxY - rect.height * progress
+        let amplitude = max(0.8, rect.height * 0.075)
+        let samples = 28
+        let cycles = 1.35
+
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: level))
+
+        for index in 0...samples {
+            let fraction = CGFloat(index) / CGFloat(samples)
+            let x = rect.minX + rect.width * fraction
+            let angle = fraction * CGFloat(cycles * Double.pi * 2) + CGFloat(phase)
+            let y = level + sin(angle) * amplitude
+            path.addLine(to: CGPoint(x: x, y: y))
+        }
+
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
 private struct WeeklyQuotaRing: View {
+    let style: QuotaDisplayStyle
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
     let diameter: CGFloat
@@ -437,6 +660,24 @@ private struct WeeklyQuotaRing: View {
         return QuotaColorScale.color(for: remainingPercent)
     }
 
+    private var progressTrim: (from: CGFloat, to: CGFloat) {
+        switch style {
+        case .clockwiseRing:
+            return (0, displayedProgress)
+        case .waveBall:
+            return (0, displayedProgress)
+        }
+    }
+
+    private var highlightTrim: (from: CGFloat, to: CGFloat) {
+        switch style {
+        case .clockwiseRing:
+            return (0, 0.16)
+        case .waveBall:
+            return (0, 0)
+        }
+    }
+
     var body: some View {
         ZStack {
             Circle()
@@ -444,7 +685,7 @@ private struct WeeklyQuotaRing: View {
 
             if window != nil {
                 Circle()
-                    .trim(from: 0, to: displayedProgress)
+                    .trim(from: progressTrim.from, to: progressTrim.to)
                     .stroke(
                         progressColor,
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
@@ -453,7 +694,7 @@ private struct WeeklyQuotaRing: View {
 
                 if activity == .running, !reduceMotion {
                     Circle()
-                        .trim(from: 0, to: 0.16)
+                        .trim(from: highlightTrim.from, to: highlightTrim.to)
                         .stroke(
                             progressColor.opacity(0.96),
                             style: StrokeStyle(lineWidth: lineWidth + 0.8, lineCap: .round)

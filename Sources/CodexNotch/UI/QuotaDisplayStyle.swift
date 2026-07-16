@@ -1,0 +1,42 @@
+import Foundation
+
+enum QuotaDisplayStyle: String, CaseIterable, Identifiable, Sendable {
+    case clockwiseRing
+    case waveBall
+
+    static let storageKey = "quotaDisplayStyle"
+    static let defaultStyle: QuotaDisplayStyle = .clockwiseRing
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .clockwiseRing:
+            return "顺时针圆环"
+        case .waveBall:
+            return "波浪球"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .clockwiseRing:
+            return "缺口从右上角顺时针展开"
+        case .waveBall:
+            return "液面高度加轻微波浪动画"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .clockwiseRing:
+            return "arrow.clockwise"
+        case .waveBall:
+            return "water.waves"
+        }
+    }
+
+    static func fromStoredValue(_ rawValue: String) -> QuotaDisplayStyle {
+        Self(rawValue: rawValue) ?? Self.defaultStyle
+    }
+}

@@ -6,7 +6,14 @@ struct CodexNotchApp: App {
 
     var body: some Scene {
         Settings {
-            EmptyView()
+            NotchSettingsView()
+        }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                SettingsLink {
+                    Text("设置…")
+                }
+            }
         }
     }
 }
