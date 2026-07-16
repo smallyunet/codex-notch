@@ -4,9 +4,12 @@ import SwiftUI
 
 final class NotchWindowController: NSWindowController {
     var onScreenParametersChanged: (() -> Void)?
+    var onOpenThread: ((String) -> Void)?
+    var onActivateChatGPT: (() -> Void)?
 
     private var screenObserver: NSObjectProtocol?
     private var hostingView: NSHostingView<AnyView>?
+    private var statusItem: NSStatusItem?
 
     init() {
         let panel = NotchPanel(contentRect: NSRect(x: 0, y: 0, width: 1, height: 1))
@@ -35,14 +38,17 @@ final class NotchWindowController: NSWindowController {
 
     func apply(layout: NotchLayout, state: NotchPresentationState) {
         guard let panel = window as? NotchPanel else { return }
-        let isHidden: Bool
-        if case .hidden = state {
-            isHidden = true
-        } else {
-            isHidden = false
+
+        if layout.mode == .menuBarFallback {
+            panel.ignoresMouseEvents = true
+            panel.orderOut(nil)
+            showFallbackMenu(for: state)
+            return
         }
 
-        if isHidden || layout.mode == .menuBarFallback {
+        hideFallbackMenu()
+        let isHidden = state == .hidden
+        if isHidden {
             panel.ignoresMouseEvents = true
             panel.orderOut(nil)
             return
@@ -58,6 +64,9 @@ final class NotchWindowController: NSWindowController {
         if let screenObserver {
             NotificationCenter.default.removeObserver(screenObserver)
         }
+        if let statusItem {
+            NSStatusBar.system.removeStatusItem(statusItem)
+        }
     }
 
     private func observeScreenChanges() {
@@ -67,6 +76,101 @@ final class NotchWindowController: NSWindowController {
             queue: .main
         ) { [weak self] _ in
             self?.onScreenParametersChanged?()
+        }
+    }
+
+    private func showFallbackMenu(for state: NotchPresentationState) {
+        let statusItem = statusItem ?? makeStatusItem()
+        statusItem.isVisible = true
+        statusItem.button?.title = "Codex"
+        statusItem.button?.toolTip = "CodexNotch"
+
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        switch state {
+        case .hidden:
+            menu.addItem(disabledItem(title: "CodexNotch"))
+
+        case let .quotaCompact(usage):
+            menu.addItem(disabledItem(title: "Codex · \(NotchText.quotaSubtitle(usage: usage))"))
+            menu.addItem(NSMenuItem.separator())
+            menu.addItem(actionItem(title: "打开 ChatGPT", representedObject: "__activate__"))
+
+        case let .workingCompact(primary, count, usage):
+            let title = count > 1 ? "Codex 正在运行 · \(count) 个任务" : "Codex 正在运行"
+            menu.addItem(disabledItem(title: title))
+            menu.addItem(disabledItem(title: NotchText.sessionSubtitle(primary, now: .now)))
+            if let usage, !usage.windows.isEmpty {
+                menu.addItem(disabledItem(title: NotchText.quotaSubtitle(usage: usage)))
+            }
+            menu.addItem(NSMenuItem.separator())
+            menu.addItem(actionItem(title: "打开当前任务", representedObject: primary.threadID))
+
+        case let .completedCompact(session):
+            menu.addItem(disabledItem(title: "Codex 已完成"))
+            menu.addItem(actionItem(
+                title: "打开 \(NotchText.projectName(cwd: session.cwd))",
+                representedObject: session.threadID
+            ))
+
+        case let .expanded(content):
+            menu.addItem(disabledItem(title: content.sessions.isEmpty ? "Codex 额度" : "Codex 任务"))
+            if content.sessions.isEmpty {
+                if let usage = content.usage, !usage.windows.isEmpty {
+                    for window in usage.windows {
+                        menu.addItem(disabledItem(title: NotchText.compactWindow(window)))
+                    }
+                } else {
+                    menu.addItem(disabledItem(title: "额度暂不可用"))
+                }
+                menu.addItem(NSMenuItem.separator())
+                menu.addItem(actionItem(title: "打开 ChatGPT", representedObject: "__activate__"))
+            } else {
+                menu.addItem(NSMenuItem.separator())
+                for session in content.sessions {
+                    menu.addItem(actionItem(
+                        title: "\(NotchText.projectName(cwd: session.cwd)) · \(session.turnID)",
+                        representedObject: session.threadID
+                    ))
+                }
+            }
+        }
+        statusItem.menu = menu
+    }
+
+    private func makeStatusItem() -> NSStatusItem {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem = item
+        return item
+    }
+
+    private func hideFallbackMenu() {
+        statusItem?.isVisible = false
+    }
+
+    private func disabledItem(title: String) -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        return item
+    }
+
+    private func actionItem(title: String, representedObject: String) -> NSMenuItem {
+        let item = NSMenuItem(
+            title: title,
+            action: #selector(handleStatusItemAction(_:)),
+            keyEquivalent: ""
+        )
+        item.target = self
+        item.representedObject = representedObject
+        return item
+    }
+
+    @objc private func handleStatusItemAction(_ sender: NSMenuItem) {
+        guard let representedObject = sender.representedObject as? String else { return }
+        if representedObject == "__activate__" {
+            onActivateChatGPT?()
+        } else {
+            onOpenThread?(representedObject)
         }
     }
 }

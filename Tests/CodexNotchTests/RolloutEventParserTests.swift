@@ -29,6 +29,14 @@ final class RolloutEventParserTests: XCTestCase {
         })
     }
 
+    func testISO8601TimestampsArePreservedForActivityDuration() throws {
+        let events = RolloutEventParser.parse(data: try fixtureData("rollout-active.jsonl"))
+        let timestamps = events.compactMap(\.timestamp)
+
+        XCTAssertEqual(timestamps.count, 2)
+        XCTAssertEqual(timestamps.first, Date(timeIntervalSince1970: 1_784_192_400))
+    }
+
     private func fixtureData(_ name: String) throws -> Data {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

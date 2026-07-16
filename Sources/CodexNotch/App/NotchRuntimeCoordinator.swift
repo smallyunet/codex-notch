@@ -13,6 +13,7 @@ struct CodexHomeLocator {
 
 final class NotchRuntimeCoordinator {
     static let sessionPollInterval: TimeInterval = 0.5
+    static let rolloutRescanInterval: TimeInterval = 5
     static let usageRefreshInterval: TimeInterval = 60
 
     private let windowController: NotchWindowController
@@ -27,6 +28,7 @@ final class NotchRuntimeCoordinator {
     private let viewModel: NotchViewModel
 
     private var sessionTimer: Timer?
+    private var rolloutRescanTimer: Timer?
     private var usageTask: Task<Void, Never>?
     private var started = false
     private var isChatGPTFrontmost = false
@@ -84,6 +86,12 @@ final class NotchRuntimeCoordinator {
         windowController.onScreenParametersChanged = { [weak self] in
             self?.render()
         }
+        windowController.onOpenThread = { [weak self] threadID in
+            self?.openThread(threadID)
+        }
+        windowController.onActivateChatGPT = { [weak self] in
+            self?.activateChatGPT()
+        }
         windowController.setRootView(NotchView(model: viewModel))
 
         frontmostMonitor.onChange = { [weak self] isFrontmost in
@@ -100,6 +108,12 @@ final class NotchRuntimeCoordinator {
         ) { [weak self] _ in
             self?.handleTimerTick()
         }
+        rolloutRescanTimer = Timer.scheduledTimer(
+            withTimeInterval: Self.rolloutRescanInterval,
+            repeats: true
+        ) { [weak self] _ in
+            self?.rolloutMonitor.rescan()
+        }
 
         refreshUsage()
         pollSessions()
@@ -112,6 +126,8 @@ final class NotchRuntimeCoordinator {
 
         sessionTimer?.invalidate()
         sessionTimer = nil
+        rolloutRescanTimer?.invalidate()
+        rolloutRescanTimer = nil
         usageTask?.cancel()
         usageTask = nil
         usageRequestID = nil
@@ -124,6 +140,7 @@ final class NotchRuntimeCoordinator {
 
     deinit {
         sessionTimer?.invalidate()
+        rolloutRescanTimer?.invalidate()
         usageTask?.cancel()
         frontmostMonitor.stop()
         rolloutMonitor.stop()
@@ -218,24 +235,38 @@ final class NotchRuntimeCoordinator {
 
     private func render(now: Date? = nil) {
         let renderDate = now ?? nowProvider()
-        let state = NotchPresentationReducer.reduce(
-            NotchPresentationInput(
-                now: renderDate,
-                isChatGPTFrontmost: isChatGPTFrontmost,
-                activeSessions: activeSessions,
-                recentCompletion: recentCompletion,
-                usage: usage,
-                isHovered: isHovered
-            )
+        let input = NotchPresentationInput(
+            now: renderDate,
+            isChatGPTFrontmost: isChatGPTFrontmost,
+            activeSessions: activeSessions,
+            recentCompletion: recentCompletion,
+            usage: usage,
+            isHovered: isHovered
         )
-        viewModel.update(state: state, now: renderDate)
 
         guard let screen = preferredScreen() else {
             windowController.window?.orderOut(nil)
             return
         }
         let layout = NotchGeometry.layout(metrics: NotchScreenMetrics(screen: screen))
-        windowController.apply(layout: layout, state: state)
+        let state = NotchPresentationReducer.reduce(input)
+        let stateForWindow: NotchPresentationState
+        if layout.mode == .menuBarFallback {
+            stateForWindow = NotchPresentationReducer.reduce(
+                NotchPresentationInput(
+                    now: input.now,
+                    isChatGPTFrontmost: input.isChatGPTFrontmost,
+                    activeSessions: input.activeSessions,
+                    recentCompletion: input.recentCompletion,
+                    usage: input.usage,
+                    isHovered: true
+                )
+            )
+        } else {
+            stateForWindow = state
+        }
+        viewModel.update(state: stateForWindow, now: renderDate)
+        windowController.apply(layout: layout, state: stateForWindow)
     }
 
     private func preferredScreen() -> NSScreen? {

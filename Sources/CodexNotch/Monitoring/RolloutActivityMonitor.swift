@@ -27,6 +27,12 @@ final class RolloutActivityMonitor {
         changeSource.start()
     }
 
+    func rescan() {
+        scanQueue.async { [weak self] in
+            self?.scanRecentRollouts()
+        }
+    }
+
     func stop() {
         changeSource.stop()
     }
@@ -38,7 +44,7 @@ final class RolloutActivityMonitor {
         let files = recentRolloutFiles(cutoff: cutoff)
         let currentURLs = Set(files)
 
-        for knownURL in eventsByFile.keys where !currentURLs.contains(knownURL) {
+        for knownURL in Array(eventsByFile.keys) where !currentURLs.contains(knownURL) {
             eventsByFile.removeValue(forKey: knownURL)
             cursors.removeValue(forKey: knownURL)
             Task { await store.remove(rolloutID: knownURL.path) }
