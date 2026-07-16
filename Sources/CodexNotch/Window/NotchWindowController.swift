@@ -11,20 +11,23 @@ final class NotchWindowController: NSWindowController {
     private var hostingView: NSHostingView<AnyView>?
     private var statusItem: NSStatusItem?
     private var lastFrameKind: PresentationFrameKind?
-    private var activeFrameAnimation: ActiveFrameAnimation?
-    private var frameAnimationTimer: Timer?
 
     private enum FrameAnimation {
-        static let expandDuration: TimeInterval = 0.38
-        static let collapseDuration: TimeInterval = 0.28
-        static let frameInterval: TimeInterval = 1.0 / 120.0
-    }
+        static let expandDuration: TimeInterval = 0.34
+        static let collapseDuration: TimeInterval = 0.26
 
-    private struct ActiveFrameAnimation {
-        let startFrame: NSRect
-        let targetFrame: NSRect
-        let startedAt: TimeInterval
-        let duration: TimeInterval
+        static let expandCurve = CAMediaTimingFunction(
+            controlPoints: 0.22,
+            0.94,
+            0.34,
+            1
+        )
+        static let collapseCurve = CAMediaTimingFunction(
+            controlPoints: 0.48,
+            0,
+            0.76,
+            0.72
+        )
     }
 
     init() {
@@ -41,14 +44,12 @@ final class NotchWindowController: NSWindowController {
     func setRootView<Content: View>(_ rootView: Content) {
         guard let panel = window as? NotchPanel else { return }
         let hostingView = NSHostingView(rootView: AnyView(rootView))
-        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        // The panel owns this view directly. Keeping it out of Auto Layout's
+        // intrinsic-size negotiation prevents a window resize from re-entering
+        // SwiftUI's text measurement while the notch is expanding.
+        hostingView.sizingOptions = []
+        hostingView.autoresizingMask = [.width, .height]
         panel.contentView = hostingView
-        NSLayoutConstraint.activate([
-            hostingView.leadingAnchor.constraint(equalTo: panel.contentView!.leadingAnchor),
-            hostingView.trailingAnchor.constraint(equalTo: panel.contentView!.trailingAnchor),
-            hostingView.topAnchor.constraint(equalTo: panel.contentView!.topAnchor),
-            hostingView.bottomAnchor.constraint(equalTo: panel.contentView!.bottomAnchor)
-        ])
         self.hostingView = hostingView
     }
 
@@ -82,7 +83,6 @@ final class NotchWindowController: NSWindowController {
         if shouldAnimateFrame {
             animateFrameChange(of: panel, to: frame)
         } else {
-            stopFrameAnimation()
             panel.setFrame(frame, display: true)
         }
         panel.ignoresMouseEvents = false
@@ -101,66 +101,22 @@ final class NotchWindowController: NSWindowController {
     }
 
     private func animateFrameChange(of panel: NSPanel, to frame: NSRect) {
-        stopFrameAnimation()
         let isExpanding = frame.height > panel.frame.height
-        activeFrameAnimation = ActiveFrameAnimation(
-            startFrame: panel.frame,
-            targetFrame: frame,
-            startedAt: ProcessInfo.processInfo.systemUptime,
-            duration: isExpanding
+        // Compact and expanded frames share their top edge. Let AppKit animate
+        // that one change as a transaction instead of repeatedly setting a
+        // frame from a timer while SwiftUI is measuring the expanded content.
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = isExpanding
                 ? FrameAnimation.expandDuration
                 : FrameAnimation.collapseDuration
-        )
-
-        // Drive the full frame ourselves rather than using NSWindow's animator.
-        // That guarantees the current compact island is the first animation
-        // frame, then only its bottom edge moves downward.
-        advanceFrameAnimation()
-        let timer = Timer(
-            timeInterval: FrameAnimation.frameInterval,
-            repeats: true
-        ) { [weak self] _ in
-            self?.advanceFrameAnimation()
+            context.timingFunction = isExpanding
+                ? FrameAnimation.expandCurve
+                : FrameAnimation.collapseCurve
+            panel.animator().setFrame(frame, display: true)
         }
-        frameAnimationTimer = timer
-        RunLoop.main.add(timer, forMode: .common)
-    }
-
-    private func advanceFrameAnimation() {
-        guard let animation = activeFrameAnimation,
-              let panel = window as? NSPanel else {
-            stopFrameAnimation()
-            return
-        }
-        let elapsed = ProcessInfo.processInfo.systemUptime - animation.startedAt
-        let progress = min(max(elapsed / animation.duration, 0), 1)
-        panel.setFrame(
-            NotchTopAnchoredFrameInterpolator.frame(
-                from: animation.startFrame,
-                to: animation.targetFrame,
-                progress: smoothStep(progress)
-            ),
-            display: true
-        )
-
-        if progress >= 1 {
-            panel.setFrame(animation.targetFrame, display: true)
-            stopFrameAnimation()
-        }
-    }
-
-    private func smoothStep(_ progress: CGFloat) -> CGFloat {
-        progress * progress * (3 - 2 * progress)
-    }
-
-    private func stopFrameAnimation() {
-        frameAnimationTimer?.invalidate()
-        frameAnimationTimer = nil
-        activeFrameAnimation = nil
     }
 
     deinit {
-        stopFrameAnimation()
         if let screenObserver {
             NotificationCenter.default.removeObserver(screenObserver)
         }
