@@ -69,6 +69,10 @@ enum ConversationTitle {
             .split(whereSeparator: { $0.isWhitespace })
             .joined(separator: " ")
         guard !collapsed.isEmpty else { return nil }
+        guard !collapsed.hasPrefix("# Response annotations:"),
+              !collapsed.hasPrefix("# Files mentioned by the user:") else {
+            return nil
+        }
         return String(collapsed.prefix(maximumLength))
     }
 }

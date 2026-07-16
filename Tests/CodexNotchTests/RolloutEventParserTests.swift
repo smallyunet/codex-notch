@@ -72,6 +72,11 @@ final class RolloutEventParserTests: XCTestCase {
         XCTAssertEqual(title?.count, 96)
     }
 
+    func testInternalRolloutWrappersAreNotConversationTitles() {
+        XCTAssertNil(ConversationTitle.normalized("# Response annotations: internal metadata"))
+        XCTAssertNil(ConversationTitle.normalized("# Files mentioned by the user: image.png"))
+    }
+
     private func fixtureData(_ name: String) throws -> Data {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
