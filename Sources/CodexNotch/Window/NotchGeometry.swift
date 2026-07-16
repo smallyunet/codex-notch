@@ -101,14 +101,14 @@ enum NotchGeometry {
                 size: quotaExpandedSize,
                 screenFrame: metrics.frame,
                 visibleFrame: metrics.visibleFrame,
-                topInset: 0
+                topInset: metrics.safeAreaInsets.top
             ),
             expandedFrame: frame(
                 centeredAt: centerX,
                 size: expandedSize,
                 screenFrame: metrics.frame,
                 visibleFrame: metrics.visibleFrame,
-                topInset: 0
+                topInset: metrics.safeAreaInsets.top
             )
         )
     }

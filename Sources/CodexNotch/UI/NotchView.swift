@@ -262,7 +262,10 @@ private struct CompactNotchView: View {
                     )
                     Spacer(minLength: 0)
                 }
-                .frame(width: quotaRegionWidth)
+                // Keep the quota control inside the right safe area. The
+                // beside-label variant is compressed to this same 38pt wing
+                // instead of being pushed left underneath the camera.
+                .frame(width: 38)
             }
             .contentShape(Rectangle())
         }
@@ -278,9 +281,6 @@ private struct CompactNotchView: View {
         return parts.joined(separator: "，")
     }
 
-    private var quotaRegionWidth: CGFloat {
-        quotaDisplayStyle == .waveBall && waveLabelPlacement == .beside ? 54 : 38
-    }
 }
 
 private struct CompactAppIconView: View {
@@ -315,7 +315,10 @@ private struct CompactQuotaView: View {
     }
 
     private var indicatorDiameter: CGFloat {
-        isHovered ? 22 : 20
+        if showsBesideLabel {
+            return isHovered ? 21 : 19
+        }
+        return isHovered ? 22 : 20
     }
 
     private var quotaText: String {
@@ -335,21 +338,22 @@ private struct CompactQuotaView: View {
                 HStack(spacing: 3) {
                     quotaIndicator
                     Text(quotaText)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
                         .foregroundStyle(quotaTextColor)
                         .monospacedDigit()
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .minimumScaleFactor(0.7)
                         .shadow(color: .black.opacity(0.75), radius: 1.2)
-                        .frame(minWidth: 17, alignment: .leading)
+                        .frame(width: 15, alignment: .leading)
                 }
+                .padding(.leading, 1)
             } else {
                 quotaIndicator
             }
         }
-        .offset(x: -2)
+        .offset(x: showsBesideLabel ? 0 : -2)
         .frame(
-            width: showsBesideLabel ? 49 : 28,
+            width: showsBesideLabel ? 38 : 28,
             height: 32,
             alignment: .leading
         )
@@ -932,7 +936,10 @@ private struct ExpandedNotchView: View {
             }
         }
         .padding(.horizontal, 14)
-        .padding(.top, 40)
+        // Expanded frames start below the physical camera cutout. Keep only
+        // a small attachment gap here so the progress bar is never hidden by
+        // the hardware notch.
+        .padding(.top, 8)
         .padding(.bottom, 10)
     }
 }
