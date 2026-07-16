@@ -2,6 +2,7 @@ import Foundation
 
 enum RolloutEventKind: Equatable, Sendable {
     case sessionMeta(threadID: String, cwd: String?, originator: String?)
+    case userMessage(message: String)
     case taskStarted(turnID: String?)
     case taskCompleted(turnID: String?)
     case turnAborted(turnID: String?)
@@ -15,6 +16,7 @@ struct RolloutEvent: Equatable, Sendable {
 struct SessionActivity: Equatable, Identifiable, Sendable {
     let threadID: String
     let turnID: String
+    let title: String?
     let cwd: String?
     let originator: String?
     let startedAt: Date
@@ -22,8 +24,27 @@ struct SessionActivity: Equatable, Identifiable, Sendable {
 
     var id: String { "\(threadID)#\(turnID)" }
 
+    init(
+        threadID: String,
+        turnID: String,
+        title: String? = nil,
+        cwd: String?,
+        originator: String?,
+        startedAt: Date,
+        lastActivityAt: Date
+    ) {
+        self.threadID = threadID
+        self.turnID = turnID
+        self.title = title
+        self.cwd = cwd
+        self.originator = originator
+        self.startedAt = startedAt
+        self.lastActivityAt = lastActivityAt
+    }
+
     func updating(
         threadID: String = "",
+        title: String? = nil,
         cwd: String? = nil,
         originator: String? = nil,
         lastActivityAt: Date? = nil
@@ -31,11 +52,24 @@ struct SessionActivity: Equatable, Identifiable, Sendable {
         SessionActivity(
             threadID: threadID.isEmpty ? self.threadID : threadID,
             turnID: turnID,
+            title: title ?? self.title,
             cwd: cwd ?? self.cwd,
             originator: originator ?? self.originator,
             startedAt: startedAt,
             lastActivityAt: lastActivityAt ?? self.lastActivityAt
         )
+    }
+}
+
+enum ConversationTitle {
+    static let maximumLength = 96
+
+    static func normalized(_ rawValue: String) -> String? {
+        let collapsed = rawValue
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+        guard !collapsed.isEmpty else { return nil }
+        return String(collapsed.prefix(maximumLength))
     }
 }
 
@@ -49,6 +83,7 @@ enum ActiveSessionReducer {
         var threadID = "unknown-thread"
         var cwd: String?
         var originator: String?
+        var latestTitle: String?
         var active: [String: SessionActivity] = [:]
         var completed: [SessionActivity] = []
 
@@ -62,12 +97,22 @@ enum ActiveSessionReducer {
                     $0.updating(threadID: threadID, cwd: cwd, originator: originator)
                 }
 
+            case let .userMessage(message):
+                guard let title = ConversationTitle.normalized(message) else { continue }
+                latestTitle = title
+                guard let key = matchingKey(for: nil, active: active),
+                      let session = active[key] else {
+                    continue
+                }
+                active[key] = session.updating(title: title, lastActivityAt: event.timestamp)
+
             case let .taskStarted(turnID):
                 let resolvedTurnID = turnID ?? "anonymous-turn-\(index)"
                 let timestamp = event.timestamp ?? .distantPast
                 active[resolvedTurnID] = SessionActivity(
                     threadID: threadID,
                     turnID: resolvedTurnID,
+                    title: latestTitle,
                     cwd: cwd,
                     originator: originator,
                     startedAt: timestamp,

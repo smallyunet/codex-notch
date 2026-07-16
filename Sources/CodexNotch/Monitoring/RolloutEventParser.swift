@@ -42,6 +42,9 @@ enum RolloutEventParser {
             switch payloadType ?? type {
             case "task_started":
                 return RolloutEvent(timestamp: timestamp, kind: .taskStarted(turnID: envelope.payload?.turnID))
+            case "user_message":
+                guard let message = envelope.payload?.message else { return nil }
+                return RolloutEvent(timestamp: timestamp, kind: .userMessage(message: message))
             case "task_complete":
                 return RolloutEvent(timestamp: timestamp, kind: .taskCompleted(turnID: envelope.payload?.turnID))
             case "turn_aborted":
@@ -66,6 +69,7 @@ private struct PayloadDTO: Decodable {
     let id: String?
     let type: String?
     let turnID: String?
+    let message: String?
     let cwd: String?
     let originator: String?
 
@@ -73,6 +77,7 @@ private struct PayloadDTO: Decodable {
         case id
         case type
         case turnID = "turn_id"
+        case message
         case cwd
         case originator
     }

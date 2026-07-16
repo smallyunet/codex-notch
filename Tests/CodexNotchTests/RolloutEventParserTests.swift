@@ -51,6 +51,27 @@ final class RolloutEventParserTests: XCTestCase {
         )
     }
 
+    func testUserMessageBecomesCompletedConversationTitle() {
+        let data = Data(
+            """
+            {"timestamp":"2026-07-16T09:00:00Z","type":"session_meta","payload":{"id":"thread-title","cwd":"/tmp/project"}}
+            {"timestamp":"2026-07-16T09:00:01Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-title"}}
+            {"timestamp":"2026-07-16T09:00:02Z","type":"event_msg","payload":{"type":"user_message","message":"  修复   登录页\\n阴影  "}}
+            {"timestamp":"2026-07-16T09:00:03Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"turn-title"}}
+            """.utf8
+        )
+
+        let result = ActiveSessionReducer.reduce(RolloutEventParser.parse(data: data))
+
+        XCTAssertEqual(result.completed.first?.title, "修复 登录页 阴影")
+    }
+
+    func testConversationTitleIsBoundedInMemory() {
+        let title = ConversationTitle.normalized(String(repeating: "a", count: 120))
+
+        XCTAssertEqual(title?.count, 96)
+    }
+
     private func fixtureData(_ name: String) throws -> Data {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
