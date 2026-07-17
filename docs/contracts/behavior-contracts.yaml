@@ -67,8 +67,8 @@ contracts:
   - id: QUOTA-SEMANTICS-004
     title: 周额度以剩余百分比清晰表达
     status: active
-    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。波浪球只在存在运行任务且未启用 Reduce Motion 时起伏，空闲和完成态保持静止液面。展开面板的额度、重置和最近对话正文均使用易读的字号和对应行高；额度条下方先保留当前周额度的精确重置时刻和秒级倒计时；其下整行“可重置 N 次”都是点击区，卡片只向下展开，逐条列出 `rate-limit-reset-credits` 中状态为 `available` 的重置券精确到期时刻和秒级倒计时，不重复显示重置券名称。设置窗口的实际刘海就是实时预览，不重复保留静态预览卡；展开面板右下角必须提供打开设置的入口。
-    rationale: 这是应用的主要信息目标，不能因动画、布局或过小字号而模糊、重复或误用滚动窗口；当前周额度的 reset_at 与重置券的 expires_at 是两类不同信息，必须分别展示。所有行的名称在当前界面都相同，重复显示会挤占时间的可读空间。重置券明细只读，不在刘海中触发“使用重置”。实时刘海比设置窗口的伪造静态预览更可信，空闲时持续波动也会错误暗示任务仍在运行。
+    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。存在运行任务且未启用 Reduce Motion 时，圆环的渐变色沿剩余额度弧柔和流动；空闲和完成态保持静止渐变，不能保留独立旋转的高光小弧。波浪球只在存在运行任务且未启用 Reduce Motion 时起伏，空闲和完成态保持静止液面。展开面板的额度、重置和最近对话正文均使用易读的字号和对应行高；额度条下方先保留当前周额度的精确重置时刻和秒级倒计时；其下整行“可重置 N 次”都是点击区，卡片只向下展开，逐条列出 `rate-limit-reset-credits` 中状态为 `available` 的重置券精确到期时刻和秒级倒计时，不重复显示重置券名称。设置窗口的实际刘海就是实时预览，不重复保留静态预览卡；展开面板右下角必须提供打开设置的入口。
+    rationale: 这是应用的主要信息目标，不能因动画、布局或过小字号而模糊、重复或误用滚动窗口；当前周额度的 reset_at 与重置券的 expires_at 是两类不同信息，必须分别展示。所有行的名称在当前界面都相同，重复显示会挤占时间的可读空间。重置券明细只读，不在刘海中触发“使用重置”。实时刘海比设置窗口的伪造静态预览更可信，空闲时持续波动也会错误暗示任务仍在运行；沿剩余额度弧流动的渐变比独立旋转的高光更像额度本身的活动状态。
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -76,8 +76,8 @@ contracts:
       include: [compact-state, quota-expanded-state, settings]
       exclude: [cost-estimation]
     examples:
-      positive: weekly window 存在时显示剩余数字；展开正文的额度、重置和最近对话均清晰可读；额度条下方保留当前周额度的重置时刻与倒计时；整行“可重置 N 次”任一点均可点击，点击后以大字号列出所有 status=available 的 expires_at 和倒计时，且不重复显示 Full reset；波浪球文字不遮挡液面，并且只在任务运行时起伏；设置页不重复展示预览卡，展开面板右下角能打开设置；20% 临界值仍是绿色。
-      negative: 只返回滚动窗口却伪造周额度，用额度窗口 reset_at 代替重置券 expires_at，展示已兑换的重置券，触发重置操作，或重置明细向上展开；空闲时波浪持续起伏，或设置页仍保留与实际刘海不同步的静态预览。
+      positive: weekly window 存在时显示剩余数字；展开正文的额度、重置和最近对话均清晰可读；额度条下方保留当前周额度的重置时刻与倒计时；整行“可重置 N 次”任一点均可点击，点击后以大字号列出所有 status=available 的 expires_at 和倒计时，且不重复显示 Full reset；波浪球文字不遮挡液面，并且只在任务运行时起伏；圆环只在任务运行时让渐变沿剩余额度弧流动；设置页不重复展示预览卡，展开面板右下角能打开设置；20% 临界值仍是绿色。
+      negative: 只返回滚动窗口却伪造周额度，用额度窗口 reset_at 代替重置券 expires_at，展示已兑换的重置券，触发重置操作，或重置明细向上展开；空闲时波浪或圆环渐变持续流动，圆环额外出现独立旋转的小弧，或设置页仍保留与实际刘海不同步的静态预览。
     guards:
       - Tests/CodexNotchTests/CodexUsageClientTests.swift
       - Tests/CodexNotchTests/NotchTextTests.swift
@@ -87,7 +87,7 @@ contracts:
       - "manual: ring and wave-ball inspection"
     supersedes: []
     superseded_by: null
-    last_verified_commit: 74cd749
+    last_verified_commit: 23ed0b8
 
   - id: PRIVACY-BOUNDARY-005
     title: 本机认证与对话内容不得被持久化或公开
@@ -135,8 +135,8 @@ contracts:
   - id: APP-IDENTITY-007
     title: 应用包提供原创且完整的图标
     status: active
-    statement: CodexNotch.app 的 Info.plist 必须声明 CodexNotch 图标，并在 Resources 中包含完整的 .icns 表示；图标使用原创的“刘海 + 命令提示符”矢量设计，不包含账号、认证或对话数据。
-    rationale: Finder、启动台和安装包需要稳定可辨识的应用身份；图标生成不能扩大本机数据暴露。
+    statement: CodexNotch.app 的 Info.plist 必须声明 CodexNotch 图标，并在 Resources 中包含完整的 .icns 表示；图标使用原创的“暖白画布 + 黑色刘海 + 命令槽和状态点”矢量设计，参考极简刘海图标的视觉语言但不复制其他产品品牌，不包含账号、认证或对话数据。
+    rationale: Finder、启动台和安装包需要稳定可辨识的应用身份；图标既应呼应实体刘海，也应在小尺寸下保持清楚。图标生成不能扩大本机数据暴露或挪用参考产品的品牌资产。
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -144,8 +144,8 @@ contracts:
       include: [build, bundle, finder, launchpad]
       exclude: [notch-screens, chatgpt-assets, user-data]
     examples:
-      positive: 构建后的 app 能在 Resources 中找到 CodexNotch.icns，且该文件包含 1024px 表示。
-      negative: Info.plist 指向不存在的图标，或只在仓库保留设计稿而未将图标打入 app。
+      positive: 构建后的 app 能在 Resources 中找到 CodexNotch.icns，且该文件包含 1024px 表示和原创的暖白刘海命令图形。
+      negative: Info.plist 指向不存在的图标，只在仓库保留设计稿而未将图标打入 app，或直接使用参考产品的名称、文字或品牌标识。
     guards:
       - Resources/AppIcon.svg
       - scripts/build_icon.sh
@@ -153,4 +153,4 @@ contracts:
       - "manual: inspect the app icon in Finder or Launchpad"
     supersedes: []
     superseded_by: null
-    last_verified_commit: 3722780
+    last_verified_commit: 23ed0b8
