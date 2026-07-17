@@ -88,6 +88,8 @@ struct NotchView: View {
     @ObservedObject private var model: NotchViewModel
     @AppStorage(QuotaDisplayStyle.storageKey)
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
+    @AppStorage(ExpandedCardAppearance.storageKey)
+    private var expandedCardAppearanceRaw = ExpandedCardAppearance.defaultStyle.rawValue
     @State private var isPointerInside = false
 
     private var quotaDisplayStyle: QuotaDisplayStyle {
@@ -101,6 +103,28 @@ struct NotchView: View {
 
     private var isHidden: Bool {
         model.state == .hidden
+    }
+
+    private var expandedCardAppearance: ExpandedCardAppearance {
+        ExpandedCardAppearance.fromStoredValue(expandedCardAppearanceRaw)
+    }
+
+    private var surfaceMaterial: NotchSurfaceMaterial {
+        expandedCardAppearance.surfaceMaterial(
+            isExpanded: isExpanded,
+            isHidden: isHidden
+        )
+    }
+
+    private var surfaceBorder: Color {
+        switch surfaceMaterial {
+        case .glass:
+            return Color.white.opacity(0.22)
+        case .black:
+            return isExpanded ? NotchPalette.border : .clear
+        case .clear:
+            return .clear
+        }
     }
 
     private var surfaceSize: CGSize {
@@ -200,11 +224,16 @@ struct NotchView: View {
             alignment: .top
         )
         .contentShape(surfaceShape)
-        .background(isHidden ? Color.clear : NotchPalette.background)
+        .background {
+            NotchSurfaceBackground(
+                material: surfaceMaterial,
+                shape: surfaceShape
+            )
+        }
         .clipShape(surfaceShape)
         .overlay {
             surfaceShape.stroke(
-                isExpanded ? NotchPalette.border : Color.clear,
+                surfaceBorder,
                 lineWidth: 0.5
             )
         }
@@ -220,6 +249,42 @@ struct NotchView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
+
+private struct NotchSurfaceBackground: View {
+    let material: NotchSurfaceMaterial
+    let shape: NotchAttachedShape
+
+    @ViewBuilder
+    var body: some View {
+        switch material {
+        case .clear:
+            Color.clear
+        case .black:
+            NotchPalette.background
+        case .glass:
+            glassBackground
+        }
+    }
+
+    @ViewBuilder
+    private var glassBackground: some View {
+        if #available(macOS 26.0, *) {
+            Color.clear
+                .glassEffect(
+                    .regular
+                        .tint(Color.black.opacity(0.2))
+                        .interactive(),
+                    in: shape
+                )
+        } else {
+            shape
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    shape.fill(Color.black.opacity(0.26))
+                }
+        }
     }
 }
 
