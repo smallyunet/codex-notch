@@ -1,28 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="paper" x1="146" y1="98" x2="878" y2="926" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#fff8ea"/>
-      <stop offset=".54" stop-color="#f6ecd8"/>
-      <stop offset="1" stop-color="#e9dcc3"/>
+    <linearGradient id="background" x1="132" y1="78" x2="890" y2="956" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#102b1e"/>
+      <stop offset=".52" stop-color="#07140f"/>
+      <stop offset="1" stop-color="#030805"/>
     </linearGradient>
-    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(302 268) rotate(54) scale(840)">
-      <stop stop-color="#ffffff" stop-opacity=".76"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    <linearGradient id="terminal" x1="184" y1="196" x2="842" y2="828" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#10241a"/>
+      <stop offset="1" stop-color="#07110d"/>
+    </linearGradient>
+    <radialGradient id="promptGlow" cx="0" cy="0" r="1" gradientTransform="translate(500 540) rotate(90) scale(290 390)">
+      <stop stop-color="#4df58c" stop-opacity=".20"/>
+      <stop offset="1" stop-color="#4df58c" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="island" x1="312" y1="350" x2="742" y2="680" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#171717"/>
-      <stop offset="1" stop-color="#050505"/>
+    <linearGradient id="prompt" x1="260" y1="402" x2="728" y2="642" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#b5ffd1"/>
+      <stop offset=".56" stop-color="#62f49a"/>
+      <stop offset="1" stop-color="#25c86d"/>
     </linearGradient>
   </defs>
 
-  <rect width="1024" height="1024" rx="226" fill="url(#paper)"/>
-  <rect width="1024" height="1024" rx="226" fill="url(#glow)"/>
-  <rect x="26" y="26" width="972" height="972" rx="204" fill="none" stroke="#8c7c61" stroke-opacity=".16" stroke-width="4"/>
+  <rect width="1024" height="1024" rx="226" fill="url(#background)"/>
+  <rect x="26" y="26" width="972" height="972" rx="204" fill="none" stroke="#8affae" stroke-opacity=".12" stroke-width="4"/>
 
-  <!-- Original notch-and-console mark, inspired by the reference's restraint. -->
-  <path d="M182 354c0-24 20-44 44-44h572c24 0 44 20 44 44v158c0 130-96 216-216 216H398c-120 0-216-86-216-216V354Z" fill="#b5a78f" fill-opacity=".28"/>
-  <path d="M170 334c0-24 20-44 44-44h596c24 0 44 20 44 44v170c0 140-104 234-234 234H404c-130 0-234-94-234-234V334Z" fill="url(#island)"/>
-  <path d="M300 548h262" fill="none" stroke="#fff9eb" stroke-linecap="round" stroke-width="34"/>
-  <circle cx="690" cy="548" r="26" fill="#fff9eb"/>
-  <circle cx="690" cy="548" r="10" fill="#0b0b0b"/>
+  <!-- A terminal window, not a floating bowl: squared composition and a clear command prompt. -->
+  <rect x="112" y="156" width="800" height="712" rx="112" fill="#020604" stroke="#2d6f4a" stroke-opacity=".72" stroke-width="10"/>
+  <rect x="130" y="174" width="764" height="676" rx="94" fill="url(#terminal)"/>
+  <path d="M130 330h764" stroke="#5cf495" stroke-opacity=".18" stroke-width="4"/>
+  <rect x="378" y="174" width="268" height="74" rx="37" fill="#020604"/>
+  <circle cx="212" cy="252" r="14" fill="#4df58c"/>
+  <circle cx="256" cy="252" r="14" fill="#4df58c" fill-opacity=".52"/>
+  <circle cx="300" cy="252" r="14" fill="#4df58c" fill-opacity=".20"/>
+
+  <ellipse cx="500" cy="548" rx="330" ry="244" fill="url(#promptGlow)"/>
+  <path d="m270 454 92 84-92 84" fill="none" stroke="url(#prompt)" stroke-linecap="round" stroke-linejoin="round" stroke-width="42"/>
+  <path d="M424 622h174" fill="none" stroke="url(#prompt)" stroke-linecap="round" stroke-width="42"/>
+  <rect x="632" y="581" width="38" height="82" rx="12" fill="#73fca7"/>
+  <rect x="640" y="590" width="22" height="64" rx="8" fill="#ccffe0"/>
 </svg>
