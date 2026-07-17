@@ -46,6 +46,7 @@ final class NotchRuntimeCoordinator {
     private var hoverExpandWorkItem: DispatchWorkItem?
     private var hoverCollapseWorkItem: DispatchWorkItem?
     private var preferencesObserver: NSObjectProtocol?
+    private var lastObservedPreferences: NotchRuntimePreferences?
 
     init(
         windowController: NotchWindowController = NotchWindowController(),
@@ -313,19 +314,25 @@ final class NotchRuntimeCoordinator {
     }
 
     private var recentConversationLimit: RecentConversationLimit {
-        RecentConversationLimit.fromStoredValue(
-            userDefaults.integer(forKey: RecentConversationLimit.storageKey)
-        )
+        runtimePreferences.recentConversationLimit
+    }
+
+    private var runtimePreferences: NotchRuntimePreferences {
+        NotchRuntimePreferences.read(from: userDefaults)
     }
 
     private func observePreferenceChanges() {
         guard preferencesObserver == nil else { return }
+        lastObservedPreferences = runtimePreferences
         preferencesObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: userDefaults,
             queue: .main
         ) { [weak self] _ in
             guard let self, self.started else { return }
+            let preferences = self.runtimePreferences
+            guard preferences != self.lastObservedPreferences else { return }
+            self.lastObservedPreferences = preferences
             self.render()
         }
     }
@@ -335,6 +342,7 @@ final class NotchRuntimeCoordinator {
             NotificationCenter.default.removeObserver(preferencesObserver)
         }
         preferencesObserver = nil
+        lastObservedPreferences = nil
     }
 
     private func expandedContentSize(

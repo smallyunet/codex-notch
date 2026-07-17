@@ -20,3 +20,15 @@ enum RecentConversationLimit: Int, CaseIterable, Identifiable, Sendable {
         Self(rawValue: rawValue) ?? Self.defaultLimit
     }
 }
+
+struct NotchRuntimePreferences: Equatable, Sendable {
+    let recentConversationLimit: RecentConversationLimit
+
+    static func read(from userDefaults: UserDefaults) -> NotchRuntimePreferences {
+        NotchRuntimePreferences(
+            recentConversationLimit: RecentConversationLimit.fromStoredValue(
+                userDefaults.integer(forKey: RecentConversationLimit.storageKey)
+            )
+        )
+    }
+}
