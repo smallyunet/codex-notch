@@ -5,8 +5,6 @@ struct NotchSettingsView: View {
     private var quotaDisplayStyleRaw = QuotaDisplayStyle.defaultStyle.rawValue
     @AppStorage(RecentConversationLimit.storageKey)
     private var recentConversationLimitRaw = RecentConversationLimit.defaultLimit.rawValue
-    @AppStorage(ExpandedCardAppearance.storageKey)
-    private var expandedCardAppearanceRaw = ExpandedCardAppearance.defaultStyle.rawValue
 
     private var selectedStyle: QuotaDisplayStyle {
         QuotaDisplayStyle.fromStoredValue(quotaDisplayStyleRaw)
@@ -27,17 +25,6 @@ struct NotchSettingsView: View {
         Binding(
             get: { recentConversationLimit },
             set: { recentConversationLimitRaw = $0.rawValue }
-        )
-    }
-
-    private var expandedCardAppearance: ExpandedCardAppearance {
-        ExpandedCardAppearance.fromStoredValue(expandedCardAppearanceRaw)
-    }
-
-    private var expandedCardAppearanceBinding: Binding<ExpandedCardAppearance> {
-        Binding(
-            get: { expandedCardAppearance },
-            set: { expandedCardAppearanceRaw = $0.rawValue }
         )
     }
 
@@ -64,18 +51,6 @@ struct NotchSettingsView: View {
             }
 
             Section {
-                Picker("卡片外观", selection: expandedCardAppearanceBinding) {
-                    ForEach(ExpandedCardAppearance.allCases) { appearance in
-                        Label(appearance.title, systemImage: appearance.systemImage)
-                            .tag(appearance)
-                    }
-                }
-                .pickerStyle(.segmented)
-
-                Text(expandedCardAppearance.subtitle)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-
                 Picker("最近聊天条数", selection: recentConversationLimitBinding) {
                     ForEach(RecentConversationLimit.allCases) { limit in
                         Text(limit.title)

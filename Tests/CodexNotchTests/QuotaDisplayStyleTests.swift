@@ -112,45 +112,13 @@ final class QuotaDisplayStyleTests: XCTestCase {
         )
     }
 
-    func testExpandedCardAppearanceDefaultsToGlassAndKeepsBlackOption() {
+    func testVisibleNotchSurfaceIsAlwaysBlackAndHiddenCanvasStaysClear() {
         XCTAssertEqual(
-            ExpandedCardAppearance.allCases,
-            [.glass, .black]
-        )
-        XCTAssertEqual(ExpandedCardAppearance.defaultStyle, .glass)
-        XCTAssertEqual(
-            ExpandedCardAppearance.fromStoredValue("unknown"),
-            .glass
-        )
-    }
-
-    func testGlassOnlyAppliesToExpandedVisibleSurface() {
-        XCTAssertEqual(
-            ExpandedCardAppearance.glass.surfaceMaterial(
-                isExpanded: true,
-                isHidden: false
-            ),
-            .glass
-        )
-        XCTAssertEqual(
-            ExpandedCardAppearance.black.surfaceMaterial(
-                isExpanded: true,
-                isHidden: false
-            ),
+            NotchSurfaceMaterial.resolve(isHidden: false),
             .black
         )
         XCTAssertEqual(
-            ExpandedCardAppearance.glass.surfaceMaterial(
-                isExpanded: false,
-                isHidden: false
-            ),
-            .black
-        )
-        XCTAssertEqual(
-            ExpandedCardAppearance.glass.surfaceMaterial(
-                isExpanded: true,
-                isHidden: true
-            ),
+            NotchSurfaceMaterial.resolve(isHidden: true),
             .clear
         )
     }
