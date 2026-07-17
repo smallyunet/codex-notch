@@ -1,7 +1,7 @@
 contracts:
   - id: NOTCH-LAYOUT-001
     title: 紧凑岛体必须贴合物理刘海安全区
-    status: active
+    status: superseded
     statement: 紧凑刘海的左右内容始终位于各自安全区中央，不被摄像头切口遮挡，也不下沉到刘海下方；左右指标共用 24pt 对齐容器，左侧 ChatGPT 标记可以做 22pt 的光学校正，右侧切换圆环或波浪球、或展开卡片时均不得改变容器尺寸或破坏两翼的视觉平衡。
     rationale: 用户首先感知的是物理刘海几何与两翼的视觉平衡；错误位置、机械地等尺寸或右侧样式改变外轮廓都会直接破坏观感。
     source: user-confirmed
@@ -17,8 +17,29 @@ contracts:
       - Tests/CodexNotchTests/NotchGeometryTests.swift
       - "manual: physical-notch compact-state inspection"
     supersedes: []
-    superseded_by: null
+    superseded_by: NOTCH-LAYOUT-013
     last_verified_commit: 74cd749
+
+  - id: NOTCH-LAYOUT-013
+    title: 紧凑岛体保持安全区平衡，左侧 GPT 标记使用 20pt 光学校正
+    status: active
+    statement: 紧凑刘海的左右内容始终位于各自安全区中央，不被摄像头切口遮挡，也不下沉到刘海下方；左右指标共用 24pt 对齐容器。左侧 ChatGPT 标记本体与运行回声使用 20pt 光学校正，右侧切换圆环或波浪球、或展开卡片时均不得改变容器尺寸或破坏两翼的视觉平衡。
+    rationale: 左标的实际图形密度高于右侧额度环，22pt 在真实刘海上显得偏大；收至 20pt 能保留清晰识别和运行态反馈，同时让两翼视觉重量更接近。
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state]
+      exclude: [menu-bar-fallback]
+    examples:
+      positive: 左侧 GPT 标记与其运行回声在 24pt 容器内以 20pt 居中显示，右侧 24pt 额度指标保持原尺寸，紧凑面板顶边贴合屏幕顶部。
+      negative: 通过缩小整个左侧安全区或移动右侧额度指标来补偿左标，或让运行、完成、空闲状态使用不同的左标本体尺寸。
+    guards:
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - "manual: physical-notch compact-state inspection across idle, running and completed states"
+    supersedes: [NOTCH-LAYOUT-001]
+    superseded_by: null
+    last_verified_commit: 9fc374b
 
   - id: NOTCH-MOTION-002
     title: 展开从紧凑岛体向下发生
