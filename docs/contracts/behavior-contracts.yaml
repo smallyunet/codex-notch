@@ -2,8 +2,8 @@ contracts:
   - id: NOTCH-LAYOUT-001
     title: 紧凑岛体必须贴合物理刘海安全区
     status: active
-    statement: 紧凑刘海的左右内容始终位于各自安全区中央，不被摄像头切口遮挡，也不下沉到刘海下方。
-    rationale: 用户首先感知的是物理刘海几何；错误位置会直接破坏产品可用性与观感。
+    statement: 紧凑刘海的左右内容始终位于各自安全区中央，不被摄像头切口遮挡，也不下沉到刘海下方；左侧 ChatGPT 标记与右侧额度指标共用固定视觉尺寸，右侧切换圆环或波浪球、或展开卡片时均不得改变该尺寸。
+    rationale: 用户首先感知的是物理刘海几何与两翼的视觉平衡；错误位置或两侧尺度不一致会直接破坏观感。
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -11,14 +11,14 @@ contracts:
       include: [notch-screens, compact-state]
       exclude: [menu-bar-fallback]
     examples:
-      positive: 左图标和右额度指示器位于刘海两翼，且紧凑面板顶边贴合屏幕顶部。
-      negative: 内容整体挂在刘海下方，或额度指示器被摄像头切口覆盖。
+      positive: 左图标和右额度指示器位于刘海两翼、使用同一固定尺寸，且紧凑面板顶边贴合屏幕顶部。
+      negative: 内容整体挂在刘海下方，额度指示器被摄像头切口覆盖，或波浪球/圆环/悬停状态改变两翼指标尺寸。
     guards:
       - Tests/CodexNotchTests/NotchGeometryTests.swift
       - "manual: physical-notch compact-state inspection"
     supersedes: []
     superseded_by: null
-    last_verified_commit: 0d37196
+    last_verified_commit: 8e4766b
 
   - id: NOTCH-MOTION-002
     title: 展开从紧凑岛体向下发生
