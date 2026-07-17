@@ -86,21 +86,38 @@ final class NotchTextTests: XCTestCase {
         XCTAssertNil(UsageSnapshot(windows: [rolling]).weeklyWindow)
     }
 
-    func testWeeklyQuotaRingTreatsTwentyPercentAsHealthy() {
-        let healthy = UsageWindow(id: "weekly", kind: .weekly, usedPercent: 80)
-        let critical = UsageWindow(id: "weekly", kind: .weekly, usedPercent: 80.01)
+    func testWeeklyQuotaLevelUsesWarningAndCriticalBoundaries() {
+        let healthy = UsageWindow(id: "weekly", kind: .weekly, usedPercent: 79.99)
+        let warning = UsageWindow(id: "weekly", kind: .weekly, usedPercent: 80)
+        let critical = UsageWindow(id: "weekly", kind: .weekly, usedPercent: 90)
 
         XCTAssertEqual(WeeklyQuotaLevel(weeklyWindow: healthy), .healthy)
+        XCTAssertEqual(WeeklyQuotaLevel(weeklyWindow: warning), .warning)
         XCTAssertEqual(WeeklyQuotaLevel(weeklyWindow: critical), .critical)
         XCTAssertEqual(WeeklyQuotaLevel(weeklyWindow: nil), .unavailable)
     }
 
-    func testQuotaColorScaleMovesFromRedToGreen() {
-        XCTAssertEqual(QuotaColorScale.hue(for: 0), 0, accuracy: 0.001)
-        XCTAssertEqual(QuotaColorScale.hue(for: 50), 0.17, accuracy: 0.001)
-        XCTAssertEqual(QuotaColorScale.hue(for: 100), 0.34, accuracy: 0.001)
-        XCTAssertEqual(QuotaColorScale.hue(for: -10), 0, accuracy: 0.001)
-        XCTAssertEqual(QuotaColorScale.hue(for: 120), 0.34, accuracy: 0.001)
+    func testQuotaColorScaleUsesStableAlertBands() {
+        XCTAssertEqual(QuotaColorScale.band(for: 100), .healthy)
+        XCTAssertEqual(QuotaColorScale.band(for: 20.01), .healthy)
+        XCTAssertEqual(QuotaColorScale.band(for: 20), .warning)
+        XCTAssertEqual(QuotaColorScale.band(for: 10.01), .warning)
+        XCTAssertEqual(QuotaColorScale.band(for: 10), .critical)
+        XCTAssertEqual(QuotaColorScale.band(for: 0), .critical)
+        XCTAssertEqual(QuotaColorScale.band(for: -.infinity), .critical)
+
+        XCTAssertEqual(
+            QuotaColorScale.components(for: 50),
+            .init(red: 0.29, green: 0.84, blue: 0.43)
+        )
+        XCTAssertEqual(
+            QuotaColorScale.components(for: 20),
+            .init(red: 1.0, green: 0.76, blue: 0.18)
+        )
+        XCTAssertEqual(
+            QuotaColorScale.components(for: 10),
+            .init(red: 0.86, green: 0.12, blue: 0.18)
+        )
     }
 
     func testResetTimestampIncludesSeconds() {

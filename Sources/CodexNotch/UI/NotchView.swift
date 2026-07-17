@@ -951,13 +951,13 @@ private enum QuotaRingGradient {
     static func gradient(progressColor: Color, angle: Double) -> AngularGradient {
         AngularGradient(
             gradient: Gradient(stops: [
-                .init(color: progressColor.opacity(0.12), location: 0),
-                .init(color: progressColor.opacity(0.30), location: 0.18),
-                .init(color: progressColor.opacity(0.80), location: 0.34),
-                .init(color: .white.opacity(0.98), location: 0.48),
-                .init(color: progressColor, location: 0.62),
-                .init(color: progressColor.opacity(0.36), location: 0.80),
-                .init(color: progressColor.opacity(0.12), location: 1)
+                .init(color: progressColor.opacity(0.24), location: 0),
+                .init(color: progressColor.opacity(0.42), location: 0.18),
+                .init(color: progressColor.opacity(0.78), location: 0.36),
+                .init(color: progressColor, location: 0.52),
+                .init(color: progressColor.opacity(0.82), location: 0.66),
+                .init(color: progressColor.opacity(0.46), location: 0.82),
+                .init(color: progressColor.opacity(0.24), location: 1)
             ]),
             center: .center,
             startAngle: .degrees(angle),
@@ -1403,17 +1403,35 @@ private struct ResetScheduleRow: View {
 }
 
 enum QuotaColorScale {
-    static func hue(for remainingPercent: Double) -> Double {
-        let finiteValue = remainingPercent.isFinite ? remainingPercent : 0
-        let clampedValue = min(max(finiteValue, 0), 100)
-        return clampedValue / 100 * 0.34
+    struct RGB: Equatable, Sendable {
+        let red: Double
+        let green: Double
+        let blue: Double
+    }
+
+    static func band(for remainingPercent: Double) -> WeeklyQuotaLevel {
+        WeeklyQuotaLevel(remainingPercent: remainingPercent)
+    }
+
+    static func components(for remainingPercent: Double) -> RGB {
+        switch band(for: remainingPercent) {
+        case .healthy:
+            return RGB(red: 0.29, green: 0.84, blue: 0.43)
+        case .warning:
+            return RGB(red: 1.0, green: 0.76, blue: 0.18)
+        case .critical:
+            return RGB(red: 0.86, green: 0.12, blue: 0.18)
+        case .unavailable:
+            return RGB(red: 0.86, green: 0.12, blue: 0.18)
+        }
     }
 
     static func color(for remainingPercent: Double) -> Color {
-        Color(
-            hue: hue(for: remainingPercent),
-            saturation: 0.82,
-            brightness: 0.96
+        let components = components(for: remainingPercent)
+        return Color(
+            red: components.red,
+            green: components.green,
+            blue: components.blue
         )
     }
 }

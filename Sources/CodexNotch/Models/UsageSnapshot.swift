@@ -87,6 +87,7 @@ struct UsageSnapshot: Equatable, Sendable {
 
 enum WeeklyQuotaLevel: Equatable, Sendable {
     case healthy
+    case warning
     case critical
     case unavailable
 
@@ -95,6 +96,20 @@ enum WeeklyQuotaLevel: Equatable, Sendable {
             self = .unavailable
             return
         }
-        self = weeklyWindow.remainingPercent < 20 ? .critical : .healthy
+        self.init(remainingPercent: weeklyWindow.remainingPercent)
+    }
+
+    init(remainingPercent: Double) {
+        guard remainingPercent.isFinite else {
+            self = .critical
+            return
+        }
+        if remainingPercent <= 10 {
+            self = .critical
+        } else if remainingPercent <= 20 {
+            self = .warning
+        } else {
+            self = .healthy
+        }
     }
 }
