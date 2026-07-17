@@ -67,8 +67,8 @@ contracts:
   - id: QUOTA-SEMANTICS-004
     title: 周额度以剩余百分比清晰表达
     status: active
-    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。
-    rationale: 这是应用的主要信息目标，不能因动画或布局而模糊、重复或误用滚动窗口。
+    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。展开面板还必须显示接口返回的可重置次数、精确重置时刻和秒级倒计时。
+    rationale: 这是应用的主要信息目标，不能因动画或布局而模糊、重复或误用滚动窗口；可重置次数和时间让用户无需打开 ChatGPT 也能判断额度恢复路径。
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -76,16 +76,17 @@ contracts:
       include: [compact-state, quota-expanded-state, settings]
       exclude: [cost-estimation]
     examples:
-      positive: weekly window 存在时显示剩余数字；波浪球文字不遮挡液面；20% 临界值仍是绿色。
-      negative: 只返回滚动窗口却伪造周额度，或把百分比重复显示在指示器旁。
+      positive: weekly window 存在时显示剩余数字；展开面板同时显示可重置次数、精确重置时刻和倒计时；波浪球文字不遮挡液面；20% 临界值仍是绿色。
+      negative: 只返回滚动窗口却伪造周额度，或在展开面板遗漏接口已返回的可重置次数。
     guards:
       - Tests/CodexNotchTests/CodexUsageClientTests.swift
       - Tests/CodexNotchTests/NotchTextTests.swift
       - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - "manual: expanded quota panel inspection"
       - "manual: ring and wave-ball inspection"
     supersedes: []
     superseded_by: null
-    last_verified_commit: 0d37196
+    last_verified_commit: 3722780
 
   - id: PRIVACY-BOUNDARY-005
     title: 本机认证与对话内容不得被持久化或公开
@@ -129,3 +130,26 @@ contracts:
     supersedes: []
     superseded_by: null
     last_verified_commit: 0d37196
+
+  - id: APP-IDENTITY-007
+    title: 应用包提供原创且完整的图标
+    status: active
+    statement: CodexNotch.app 的 Info.plist 必须声明 CodexNotch 图标，并在 Resources 中包含完整的 .icns 表示；图标使用原创的“刘海 + 命令提示符”矢量设计，不包含账号、认证或对话数据。
+    rationale: Finder、启动台和安装包需要稳定可辨识的应用身份；图标生成不能扩大本机数据暴露。
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [build, bundle, finder, launchpad]
+      exclude: [notch-screens, chatgpt-assets, user-data]
+    examples:
+      positive: 构建后的 app 能在 Resources 中找到 CodexNotch.icns，且该文件包含 1024px 表示。
+      negative: Info.plist 指向不存在的图标，或只在仓库保留设计稿而未将图标打入 app。
+    guards:
+      - Resources/AppIcon.svg
+      - scripts/build_icon.sh
+      - scripts/verify_app.sh
+      - "manual: inspect the app icon in Finder or Launchpad"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: 3722780
