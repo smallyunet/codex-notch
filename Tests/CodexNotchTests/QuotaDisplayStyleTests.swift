@@ -29,6 +29,14 @@ final class QuotaDisplayStyleTests: XCTestCase {
         XCTAssertEqual(QuotaRingMath.clockwiseStartAngleDegrees, -90)
     }
 
+    func testCompactAppIconAndQuotaStylesUseOneFixedDiameter() {
+        XCTAssertEqual(NotchCompactLayout.indicatorDiameter, 24)
+        XCTAssertLessThanOrEqual(
+            NotchCompactLayout.indicatorDiameter,
+            NotchCompactLayout.sideWingWidth
+        )
+    }
+
     func testRecentConversationLimitOffersOneThroughFiveAndFallsBackToTwo() {
         XCTAssertEqual(
             RecentConversationLimit.allCases.map(\.rawValue),

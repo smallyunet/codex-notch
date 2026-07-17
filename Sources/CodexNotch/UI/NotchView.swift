@@ -154,7 +154,6 @@ struct NotchView: View {
                     subtitle: NotchText.quotaSubtitle(usage: usage),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
-                    isHovered: isPointerInside,
                     action: model.onActivateChatGPT
                 )
             case let .workingCompact(primary, count, usage):
@@ -166,7 +165,6 @@ struct NotchView: View {
                         : "已运行 \(NotchText.formatDuration(seconds: max(0, model.now.timeIntervalSince(primary.startedAt))))",
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
-                    isHovered: isPointerInside,
                     action: { model.onOpenThread(primary.threadID) }
                 )
             case let .completedCompact(session, usage):
@@ -176,7 +174,6 @@ struct NotchView: View {
                     subtitle: NotchText.projectName(cwd: session.cwd),
                     usage: usage,
                     quotaDisplayStyle: quotaDisplayStyle,
-                    isHovered: isPointerInside,
                     action: { model.onOpenThread(session.threadID) }
                 )
             case let .expanded(content):
@@ -186,7 +183,6 @@ struct NotchView: View {
                     cameraSafeAreaInset: model.cameraSafeAreaInset,
                     compactWidth: model.compactWidth,
                     quotaDisplayStyle: quotaDisplayStyle,
-                    isHovered: isPointerInside,
                     isResetScheduleExpanded: model.isResetScheduleExpanded,
                     onActivateChatGPT: model.onActivateChatGPT,
                     onOpenThread: model.onOpenThread,
@@ -307,7 +303,6 @@ private struct CompactNotchView: View {
     let subtitle: String
     let usage: UsageSnapshot?
     let quotaDisplayStyle: QuotaDisplayStyle
-    let isHovered: Bool
     let action: () -> Void
 
     var body: some View {
@@ -327,8 +322,7 @@ private struct CompactNotchView: View {
                 CompactQuotaView(
                     usage: usage,
                     activity: icon.quotaActivity,
-                    style: quotaDisplayStyle,
-                    isHovered: isHovered
+                    style: quotaDisplayStyle
                 )
             }
             .contentShape(Rectangle())
@@ -354,14 +348,20 @@ private struct CompactAppIconView: View {
         Group {
             switch status {
             case .working:
-                RunningChatGPTIcon(size: 18)
+                RunningChatGPTIcon(size: NotchCompactLayout.indicatorDiameter)
             case .completed:
-                CompletedChatGPTIcon(size: 18)
+                CompletedChatGPTIcon(size: NotchCompactLayout.indicatorDiameter)
             case .quota:
-                ChatGPTMark(size: 18, fallbackSystemName: status.fallbackSystemName)
+                ChatGPTMark(
+                    size: NotchCompactLayout.indicatorDiameter,
+                    fallbackSystemName: status.fallbackSystemName
+                )
             }
         }
-        .frame(width: 28, height: NotchCompactLayout.height)
+        .frame(
+            width: NotchCompactLayout.indicatorDiameter,
+            height: NotchCompactLayout.height
+        )
         .accessibilityHidden(true)
     }
 }
@@ -370,11 +370,6 @@ private struct CompactQuotaView: View {
     let usage: UsageSnapshot?
     let activity: QuotaRingActivity
     let style: QuotaDisplayStyle
-    let isHovered: Bool
-
-    private var indicatorDiameter: CGFloat {
-        isHovered ? 26 : 24
-    }
 
     var body: some View {
         quotaIndicator
@@ -392,7 +387,7 @@ private struct CompactQuotaView: View {
             style: style,
             usage: usage,
             activity: activity,
-            diameter: indicatorDiameter,
+            diameter: NotchCompactLayout.indicatorDiameter,
             lineWidth: 1.75,
             fontSize: 10.5
         )
@@ -418,9 +413,9 @@ private struct CompletedChatGPTIcon: View {
                 // not a generic circular notification ring. It reads as a
                 // single completion echo from the left-side app icon.
                 ChatGPTMark(size: size, tint: NotchPalette.success)
-                    .scaleEffect(hasSettled ? 1.42 : 0.82)
-                    .opacity(hasSettled ? 0 : 0.58)
-                    .blur(radius: hasSettled ? 0.75 : 0)
+                    .scaleEffect(hasSettled ? 1.14 : 0.92)
+                    .opacity(hasSettled ? 0 : 0.42)
+                    .blur(radius: hasSettled ? 0.5 : 0)
             }
 
             ChatGPTMark(size: size)
@@ -434,9 +429,9 @@ private struct CompletedChatGPTIcon: View {
                     Circle()
                         .stroke(NotchPalette.background, lineWidth: 1)
                 }
-                .offset(x: 7.5, y: 7.5)
+                .offset(x: 6, y: 6)
         }
-        .frame(width: size + 10, height: size + 10)
+        .frame(width: size, height: size)
         .onAppear {
             guard !reduceMotion else { return }
             hasSettled = true
@@ -493,39 +488,19 @@ private struct ChatGPTMark: View {
 }
 
 private struct RunningChatGPTIcon: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isEmittingEcho = false
-
     let size: CGFloat
 
     var body: some View {
         ZStack {
-            if !reduceMotion {
-                // A shape echo makes the active state feel native to ChatGPT
-                // while staying inside the narrow left notch wing.
-                ChatGPTMark(size: size, tint: NotchPalette.accent)
-                    .scaleEffect(isEmittingEcho ? 1.42 : 0.82)
-                    .opacity(isEmittingEcho ? 0 : 0.62)
-                    .blur(radius: isEmittingEcho ? 0.75 : 0)
-                    .shadow(
-                        color: NotchPalette.accent.opacity(isEmittingEcho ? 0 : 0.36),
-                        radius: 2
-                    )
-            }
+            // Keep the running signal visible without a perpetual pulse.
+            // The low-opacity blue silhouette is the static ChatGPT echo.
+            ChatGPTMark(size: size, tint: NotchPalette.accent.opacity(0.38))
+                .scaleEffect(1.05)
+                .blur(radius: 0.2)
 
             ChatGPTMark(size: size)
         }
-        .frame(width: size + 10, height: size + 10)
-        .onAppear {
-            guard !reduceMotion else { return }
-            isEmittingEcho = true
-        }
-        .animation(
-            reduceMotion
-                ? nil
-                : .easeOut(duration: 1.08).repeatForever(autoreverses: false),
-            value: isEmittingEcho
-        )
+        .frame(width: size, height: size)
     }
 }
 
@@ -942,7 +917,6 @@ private struct ExpandedNotchView: View {
     let cameraSafeAreaInset: CGFloat
     let compactWidth: CGFloat
     let quotaDisplayStyle: QuotaDisplayStyle
-    let isHovered: Bool
     let isResetScheduleExpanded: Bool
     let onActivateChatGPT: () -> Void
     let onOpenThread: (String) -> Void
@@ -960,7 +934,6 @@ private struct ExpandedNotchView: View {
                 subtitle: headerSubtitle,
                 usage: content.usage,
                 quotaDisplayStyle: quotaDisplayStyle,
-                isHovered: isHovered,
                 action: headerAction
             )
             .frame(

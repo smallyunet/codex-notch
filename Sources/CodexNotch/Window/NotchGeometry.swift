@@ -64,6 +64,7 @@ enum NotchCompactLayout {
     static let sideWingWidth: CGFloat = 52
     static let minimumWidth: CGFloat = 289
     static let height: CGFloat = 32
+    static let indicatorDiameter: CGFloat = 24
 }
 
 enum NotchExpandedLayout {
