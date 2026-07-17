@@ -1,0 +1,131 @@
+contracts:
+  - id: NOTCH-LAYOUT-001
+    title: 紧凑岛体必须贴合物理刘海安全区
+    status: active
+    statement: 紧凑刘海的左右内容始终位于各自安全区中央，不被摄像头切口遮挡，也不下沉到刘海下方。
+    rationale: 用户首先感知的是物理刘海几何；错误位置会直接破坏产品可用性与观感。
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [notch-screens, compact-state]
+      exclude: [menu-bar-fallback]
+    examples:
+      positive: 左图标和右额度指示器位于刘海两翼，且紧凑面板顶边贴合屏幕顶部。
+      negative: 内容整体挂在刘海下方，或额度指示器被摄像头切口覆盖。
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - "manual: physical-notch compact-state inspection"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: 0d37196
+
+  - id: NOTCH-MOTION-002
+    title: 展开从紧凑岛体向下发生
+    status: active
+    statement: 悬停展开从既有紧凑岛体向下揭示内容；外层窗口不得在 SwiftUI 布局期间持续缩放或导致闪烁、向上展开、居中炸开和鼠标拦截残留。
+    rationale: 固定画布、内部岛体动画是避免窗口跳动与历史布局崩溃的必要边界。
+    source: incident
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [notch-screens, hover-expand, hover-collapse]
+      exclude: [menu-bar-fallback]
+    examples:
+      positive: 面板先准备最终画布，SwiftUI 可见岛体只向下展开，收起后透明画布回收。
+      negative: 用定时器逐帧调整 NSPanel 尺寸，或从物理刘海中间同时向上、向下弹开。
+    guards:
+      - Tests/CodexNotchTests/NotchGeometryTests.swift
+      - docs/decisions/001-fixed-canvas-notch-motion.md
+      - "manual: hover expansion and collapse on physical-notch hardware"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: 0d37196
+
+  - id: ACTIVITY-STATE-003
+    title: 活动任务优先，完成状态可见
+    status: active
+    statement: 有任一活动任务时紧凑刘海显示运行态；没有活动任务但存在最近完成记录时显示完成对号；没有两者时仍显示额度；新任务必须覆盖旧完成态。
+    rationale: 用户需要在不展开卡片时区分正在运行、刚完成和纯额度状态。
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, expanded-state, rollout-session-monitoring]
+      exclude: [task-termination]
+    examples:
+      positive: 完成记录存在时，收起的刘海仍可看到左侧绿色对号；新会话出现后立刻变为运行态。
+      negative: 完成对号只在展开卡片内可见，或旧完成态覆盖新运行任务。
+    guards:
+      - Tests/CodexNotchTests/NotchPresentationReducerTests.swift
+      - Tests/CodexNotchTests/ActiveSessionStoreTests.swift
+      - "manual: observe compact completion state after a real task finishes"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: 0d37196
+
+  - id: QUOTA-SEMANTICS-004
+    title: 周额度以剩余百分比清晰表达
+    status: active
+    statement: 右侧优先显示周额度的剩余百分比；数字在圆环或波浪球内部；圆环缺口从 12 点方向按顺时针表达，额度高为绿色、低于 20% 为红色。
+    rationale: 这是应用的主要信息目标，不能因动画或布局而模糊、重复或误用滚动窗口。
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [compact-state, quota-expanded-state, settings]
+      exclude: [cost-estimation]
+    examples:
+      positive: weekly window 存在时显示剩余数字；波浪球文字不遮挡液面；20% 临界值仍是绿色。
+      negative: 只返回滚动窗口却伪造周额度，或把百分比重复显示在指示器旁。
+    guards:
+      - Tests/CodexNotchTests/CodexUsageClientTests.swift
+      - Tests/CodexNotchTests/NotchTextTests.swift
+      - Tests/CodexNotchTests/QuotaDisplayStyleTests.swift
+      - "manual: ring and wave-ball inspection"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: 0d37196
+
+  - id: PRIVACY-BOUNDARY-005
+    title: 本机认证与对话内容不得被持久化或公开
+    status: active
+    statement: 认证令牌只在进程内存使用；不得写入仓库、应用缓存或日志；不得展示或记录用户消息正文；无刘海 fallback 也不得扩大内容暴露。
+    rationale: 应用读取本机 ChatGPT/Codex 登录态和会话日志，最小暴露是不可降低的边界。
+    source: technical-constraint
+    owner: project-maintainer
+    risk: critical
+    scope:
+      include: [auth-reader, usage-client, rollout-monitor, logs, fallback-menu]
+      exclude: [user-provided project names and thread identifiers needed for navigation]
+    examples:
+      positive: usage 请求的 Authorization header 不进入日志；展开列表只显示摘要标题与项目名。
+      negative: 提交 auth.json、打印 token、缓存完整 usage 响应或显示用户正文。
+    guards:
+      - Tests/CodexNotchTests/CodexAuthReaderTests.swift
+      - "manual: sensitive-diff and runtime-log review until a dedicated secret scanner exists"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: 0d37196
+
+  - id: PACKAGE-VERIFY-006
+    title: 可分发 app 必须来自已验证构建
+    status: active
+    statement: 任何声称可运行或可分发的 CodexNotch.app 都必须由当前工作树构建，并通过 bundle、Info.plist 和 codesign 验证；发布 zip 必须由 release 脚本生成。
+    rationale: 源码测试通过不代表 app bundle 可启动或签名正确。
+    source: technical-constraint
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [build, bundle, local-release]
+      exclude: [remote-release-upload]
+    examples:
+      positive: "./scripts/verify.sh 构建并验证 dist/CodexNotch.app。"
+      negative: 只运行 `swift test` 就宣称 release 已可安装，或验证旧 bundle 后替换为新二进制。
+    guards:
+      - scripts/build_app.sh
+      - scripts/verify_app.sh
+      - scripts/verify.sh
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: 0d37196
