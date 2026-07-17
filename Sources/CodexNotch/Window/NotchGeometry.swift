@@ -66,6 +66,17 @@ enum NotchCompactLayout {
     static let height: CGFloat = 32
     static let indicatorDiameter: CGFloat = 24
     static let appMarkSize: CGFloat = 18
+    static let quotaRingLineWidth: CGFloat = 2.25
+    static let quotaWaveBallBorderLineWidth: CGFloat = 1.75
+
+    static func quotaIndicatorLineWidth(for style: QuotaDisplayStyle) -> CGFloat {
+        switch style {
+        case .clockwiseRing:
+            quotaRingLineWidth
+        case .waveBall:
+            quotaWaveBallBorderLineWidth
+        }
+    }
 }
 
 enum NotchExpandedLayout {

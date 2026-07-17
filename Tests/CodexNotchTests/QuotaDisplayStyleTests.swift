@@ -42,6 +42,22 @@ final class QuotaDisplayStyleTests: XCTestCase {
         )
     }
 
+    func testCompactRingUsesAThickerStrokeWithoutChangingTheWaveBallBorder() {
+        XCTAssertEqual(NotchCompactLayout.indicatorDiameter, 24)
+        XCTAssertEqual(
+            NotchCompactLayout.quotaIndicatorLineWidth(for: .clockwiseRing),
+            2.25
+        )
+        XCTAssertEqual(
+            NotchCompactLayout.quotaIndicatorLineWidth(for: .waveBall),
+            1.75
+        )
+        XCTAssertLessThan(
+            NotchCompactLayout.quotaIndicatorLineWidth(for: .clockwiseRing),
+            NotchCompactLayout.indicatorDiameter / 4
+        )
+    }
+
     func testQuotaIndicatorMotionRunsOnlyWhileATaskIsRunning() {
         XCTAssertTrue(
             QuotaIndicatorMotion.shouldAnimate(isTaskRunning: true, reduceMotion: false)

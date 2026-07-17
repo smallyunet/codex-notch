@@ -421,7 +421,7 @@ private struct CompactQuotaView: View {
             usage: usage,
             activity: activity,
             diameter: NotchCompactLayout.indicatorDiameter,
-            lineWidth: 1.75,
+            lineWidth: NotchCompactLayout.quotaIndicatorLineWidth(for: style),
             fontSize: 10.5
         )
     }
