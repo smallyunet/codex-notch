@@ -51,6 +51,16 @@ enum QuotaRingGradientMotion {
     static let restingAngle = -90.0
     static let flowingAngle = restingAngle + 360.0
     static let duration = 1.8
+
+    static func angle(at date: Date, isAnimating: Bool) -> Double {
+        guard isAnimating else { return restingAngle }
+
+        let elapsed = date.timeIntervalSinceReferenceDate
+        let remainder = elapsed.truncatingRemainder(dividingBy: duration)
+        let cycleTime = remainder >= 0 ? remainder : remainder + duration
+        let progress = cycleTime / duration
+        return restingAngle + (flowingAngle - restingAngle) * progress
+    }
 }
 
 enum QuotaRingActivity: Equatable {

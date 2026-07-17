@@ -819,8 +819,6 @@ private struct WeeklyQuotaRing: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var displayedProgress: CGFloat = 0
     @State private var completionPulse = false
-    @State private var gradientAngle = QuotaRingGradientMotion.restingAngle
-    @State private var isGradientAnimationActive = false
 
     private var window: UsageWindow? {
         usage?.weeklyWindow
@@ -848,6 +846,13 @@ private struct WeeklyQuotaRing: View {
         case .waveBall:
             return (0, displayedProgress)
         }
+    }
+
+    private var shouldAnimateGradient: Bool {
+        QuotaIndicatorMotion.shouldAnimate(
+            isTaskRunning: activity == .running,
+            reduceMotion: reduceMotion
+        )
     }
 
     var body: some View {
@@ -897,12 +902,22 @@ private struct WeeklyQuotaRing: View {
         case .solid:
             quotaArc(progressColor)
         case .gradient:
-            quotaArc(
-                QuotaRingGradient.gradient(
-                    progressColor: progressColor,
-                    angle: gradientAngle
+            TimelineView(
+                .animation(
+                    minimumInterval: 1.0 / 60.0,
+                    paused: !shouldAnimateGradient
                 )
-            )
+            ) { context in
+                quotaArc(
+                    QuotaRingGradient.gradient(
+                        progressColor: progressColor,
+                        angle: QuotaRingGradientMotion.angle(
+                            at: context.date,
+                            isAnimating: shouldAnimateGradient
+                        )
+                    )
+                )
+            }
         }
     }
 
@@ -941,7 +956,6 @@ private struct WeeklyQuotaRing: View {
         guard !reduceMotion else {
             completionPulse = false
             displayedProgress = targetProgress
-            stopGradientAnimation()
             return
         }
 
@@ -949,40 +963,18 @@ private struct WeeklyQuotaRing: View {
         case .idle:
             completionPulse = false
             updateProgress()
-            stopGradientAnimation()
         case .running:
             completionPulse = false
             displayedProgress = 1
             withAnimation(.easeOut(duration: 0.9)) {
                 displayedProgress = targetProgress
             }
-            startGradientAnimation()
         case .completed:
             displayedProgress = targetProgress
             completionPulse = false
-            stopGradientAnimation()
             withAnimation(.easeOut(duration: 0.5)) {
                 completionPulse = true
             }
-        }
-    }
-
-    private func startGradientAnimation() {
-        guard !isGradientAnimationActive else { return }
-        isGradientAnimationActive = true
-        gradientAngle = QuotaRingGradientMotion.restingAngle
-        withAnimation(
-            .linear(duration: QuotaRingGradientMotion.duration)
-                .repeatForever(autoreverses: false)
-        ) {
-            gradientAngle = QuotaRingGradientMotion.flowingAngle
-        }
-    }
-
-    private func stopGradientAnimation() {
-        isGradientAnimationActive = false
-        withAnimation(nil) {
-            gradientAngle = QuotaRingGradientMotion.restingAngle
         }
     }
 }

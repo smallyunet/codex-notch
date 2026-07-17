@@ -64,6 +64,37 @@ final class QuotaDisplayStyleTests: XCTestCase {
         XCTAssertGreaterThan(QuotaRingGradientMotion.duration, 0)
     }
 
+    func testRunningRingGradientChangesAngleAcrossAnimationTimeline() {
+        let start = Date(timeIntervalSinceReferenceDate: 0)
+        let quarterTurn = start.addingTimeInterval(
+            QuotaRingGradientMotion.duration / 4
+        )
+
+        XCTAssertEqual(
+            QuotaRingGradientMotion.angle(at: start, isAnimating: true),
+            QuotaRingGradientMotion.restingAngle,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            QuotaRingGradientMotion.angle(at: quarterTurn, isAnimating: true),
+            0,
+            accuracy: 0.0001
+        )
+        XCTAssertNotEqual(
+            QuotaRingGradientMotion.angle(at: start, isAnimating: true),
+            QuotaRingGradientMotion.angle(at: quarterTurn, isAnimating: true)
+        )
+    }
+
+    func testStoppedOrReducedMotionRingKeepsGradientAtRest() {
+        let later = Date(timeIntervalSinceReferenceDate: 123.45)
+
+        XCTAssertEqual(
+            QuotaRingGradientMotion.angle(at: later, isAnimating: false),
+            QuotaRingGradientMotion.restingAngle
+        )
+    }
+
     func testStoppedRingUsesSolidColorWhileRunningRingUsesGradient() {
         XCTAssertEqual(QuotaRingAppearance.colorMode(for: .running), .gradient)
         XCTAssertEqual(QuotaRingAppearance.colorMode(for: .idle), .solid)
