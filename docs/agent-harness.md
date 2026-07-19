@@ -2,7 +2,7 @@
 status: active
 owner: project-maintainer
 created_at: 2026-07-19
-last_verified_commit: pending
+last_verified_commit: 8bd1251
 ---
 
 # CodexNotch change harness

@@ -5,7 +5,7 @@ supersedes: [001-fixed-canvas-notch-motion, 002-native-liquid-glass-with-fallbac
 superseded_by: null
 owner: project-maintainer
 created_at: 2026-07-19
-last_verified_commit: pending
+last_verified_commit: 8bd1251
 ---
 
 # Use a menu bar item and remove notch and session monitoring
