@@ -37,7 +37,8 @@ struct UsageResponseDTO: Decodable {
             id: id,
             kind: UsageWindowClassifier.kind(seconds: seconds),
             usedPercent: usedPercent,
-            resetAt: dto.resetAt
+            resetAt: dto.resetAt,
+            durationSeconds: TimeInterval(seconds)
         )
     }
 }

@@ -12,12 +12,20 @@ struct UsageWindow: Equatable, Identifiable, Sendable {
     let kind: UsageWindowKind
     let usedPercent: Double
     let resetAt: Date?
+    let durationSeconds: TimeInterval?
 
-    init(id: String, kind: UsageWindowKind, usedPercent: Double, resetAt: Date? = nil) {
+    init(
+        id: String,
+        kind: UsageWindowKind,
+        usedPercent: Double,
+        resetAt: Date? = nil,
+        durationSeconds: TimeInterval? = nil
+    ) {
         self.id = id
         self.kind = kind
         self.usedPercent = UsageWindowClassifier.clampPercent(usedPercent)
         self.resetAt = resetAt
+        self.durationSeconds = durationSeconds
     }
 
     var remainingPercent: Double {

@@ -22,6 +22,7 @@ final class CodexUsageClientTests: XCTestCase {
         XCTAssertEqual(snapshot.windows.count, 1)
         XCTAssertEqual(snapshot.windows.first?.kind, .weekly)
         XCTAssertEqual(snapshot.windows.first?.usedPercent, 5)
+        XCTAssertEqual(snapshot.windows.first?.durationSeconds, 604_800)
     }
 
     func testMultipleWindowsAreClassifiedIndependently() async throws {

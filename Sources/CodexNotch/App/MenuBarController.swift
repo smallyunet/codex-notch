@@ -115,19 +115,15 @@ final class MenuBarController: NSObject {
 
     private func rebuildMenu() {
         let menu = NSMenu()
-        let summary = NSMenuItem(
-            title: MenuBarText.summary(snapshot: snapshot, error: errorState),
-            action: nil,
-            keyEquivalent: ""
+        let progressItem = NSMenuItem()
+        progressItem.view = QuotaProgressMenuView(
+            presentation: QuotaProgressPresentation(
+                snapshot: snapshot,
+                error: errorState,
+                now: .now
+            )
         )
-        summary.isEnabled = false
-        menu.addItem(summary)
-
-        if let resetLine = MenuBarText.resetLine(snapshot: snapshot) {
-            let resetItem = NSMenuItem(title: resetLine, action: nil, keyEquivalent: "")
-            resetItem.isEnabled = false
-            menu.addItem(resetItem)
-        }
+        menu.addItem(progressItem)
 
         menu.addItem(.separator())
         menu.addItem(actionItem(title: "Refresh Now", action: #selector(refreshNow), keyEquivalent: "r"))
@@ -192,4 +188,154 @@ enum MenuBarText {
         formatter.dateFormat = "MMM d, yyyy 'at' HH:mm"
         return formatter
     }()
+}
+
+struct QuotaProgressPresentation: Equatable {
+    let quotaValue: String
+    let quotaProgress: Double?
+    let resetValue: String
+    let resetDetail: String?
+    let resetProgress: Double?
+
+    init(snapshot: UsageSnapshot?, error: MenuBarErrorState?, now: Date) {
+        guard let weekly = snapshot?.weeklyWindow else {
+            switch error {
+            case .signInRequired:
+                quotaValue = "Sign in required"
+            case .quotaUnavailable:
+                quotaValue = "Unavailable"
+            case nil:
+                quotaValue = "Loading…"
+            }
+            quotaProgress = nil
+            resetValue = "—"
+            resetDetail = nil
+            resetProgress = nil
+            return
+        }
+
+        quotaValue = "\(Int(weekly.remainingPercent.rounded()))%"
+        quotaProgress = Self.clamp(weekly.remainingPercent / 100)
+
+        guard let resetAt = weekly.resetAt,
+              let duration = weekly.durationSeconds,
+              duration.isFinite,
+              duration > 0 else {
+            resetValue = "Unavailable"
+            resetDetail = MenuBarText.resetLine(snapshot: snapshot)
+            resetProgress = nil
+            return
+        }
+
+        let remaining = max(0, resetAt.timeIntervalSince(now))
+        resetValue = Self.durationText(remaining)
+        resetDetail = MenuBarText.resetLine(snapshot: snapshot)
+        resetProgress = Self.clamp(remaining / duration)
+    }
+
+    private static func clamp(_ value: Double) -> Double {
+        guard value.isFinite else { return 0 }
+        return min(1, max(0, value))
+    }
+
+    private static func durationText(_ interval: TimeInterval) -> String {
+        let totalMinutes = max(0, Int(interval / 60))
+        let days = totalMinutes / (24 * 60)
+        let hours = (totalMinutes / 60) % 24
+        let minutes = totalMinutes % 60
+
+        if days > 0 { return "\(days)d \(hours)h" }
+        if hours > 0 { return "\(hours)h \(minutes)m" }
+        return "\(minutes)m"
+    }
+}
+
+final class QuotaProgressMenuView: NSView {
+    static let width: CGFloat = 260
+    static let height: CGFloat = 116
+
+    init(presentation: QuotaProgressPresentation) {
+        super.init(frame: NSRect(x: 0, y: 0, width: Self.width, height: Self.height))
+        translatesAutoresizingMaskIntoConstraints = false
+
+        let quotaRow = Self.labelRow(title: "Weekly remaining", value: presentation.quotaValue)
+        let quotaBar = Self.progressBar(
+            value: presentation.quotaProgress,
+            accessibilityLabel: "Weekly quota remaining"
+        )
+        let resetRow = Self.labelRow(title: "Until weekly reset", value: presentation.resetValue)
+        let resetBar = Self.progressBar(
+            value: presentation.resetProgress,
+            accessibilityLabel: "Time remaining until weekly reset"
+        )
+
+        let stack = NSStackView(views: [quotaRow, quotaBar, resetRow, resetBar])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 6
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        for view in [quotaRow, quotaBar, resetRow, resetBar] {
+            view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
+
+        if let detail = presentation.resetDetail {
+            let detailLabel = NSTextField(labelWithString: detail)
+            detailLabel.font = .systemFont(ofSize: 11)
+            detailLabel.textColor = .secondaryLabelColor
+            detailLabel.lineBreakMode = .byTruncatingTail
+            detailLabel.translatesAutoresizingMaskIntoConstraints = false
+            stack.addArrangedSubview(detailLabel)
+            detailLabel.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
+
+        NSLayoutConstraint.activate([
+            widthAnchor.constraint(equalToConstant: Self.width),
+            heightAnchor.constraint(equalToConstant: Self.height),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 10)
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private static func labelRow(title: String, value: String) -> NSView {
+        let titleLabel = NSTextField(labelWithString: title)
+        titleLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        titleLabel.textColor = .labelColor
+
+        let valueLabel = NSTextField(labelWithString: value)
+        valueLabel.font = .monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
+        valueLabel.textColor = .secondaryLabelColor
+        valueLabel.alignment = .right
+        valueLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        let row = NSStackView(views: [titleLabel, valueLabel])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.distribution = .fill
+        row.translatesAutoresizingMaskIntoConstraints = false
+        return row
+    }
+
+    private static func progressBar(value: Double?, accessibilityLabel: String) -> NSProgressIndicator {
+        let progress = NSProgressIndicator()
+        progress.style = .bar
+        progress.controlSize = .small
+        progress.isIndeterminate = false
+        progress.minValue = 0
+        progress.maxValue = 1
+        progress.doubleValue = value ?? 0
+        progress.toolTip = accessibilityLabel
+        progress.setAccessibilityLabel(accessibilityLabel)
+        progress.setAccessibilityValue(value.map { "\(Int(($0 * 100).rounded())) percent" } ?? "Unavailable")
+        progress.translatesAutoresizingMaskIntoConstraints = false
+        progress.heightAnchor.constraint(equalToConstant: 6).isActive = true
+        return progress
+    }
 }

@@ -86,3 +86,25 @@ contracts:
     supersedes: []
     superseded_by: null
     last_verified_commit: 23b1418
+
+  - id: MENU-PROGRESS-005
+    title: The status menu visualizes both remaining quota and reset time
+    status: active
+    statement: The top of the status menu contains two labeled native progress bars. The quota bar is the clamped remaining weekly percentage. The reset bar is the clamped time remaining until reset divided by the exact window duration returned by the usage endpoint. Text labels preserve the numeric meaning, and missing reset metadata is shown as unavailable instead of using an assumed duration.
+    rationale: Paired remaining-state bars make quota capacity and renewal timing scannable while keeping the calculation truthful and accessible.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [status-menu, usage-parsing, accessibility]
+      exclude: [quota-prediction, hardcoded-reset-window, additional-network-data]
+    examples:
+      positive: With 81 percent quota remaining and two days left in a seven-day window, the bars show 81 percent and two sevenths remaining.
+      negative: The reset bar assumes every window is seven days when the endpoint omits its duration.
+    guards:
+      - Tests/CodexNotchTests/MenuBarTextTests.swift
+      - Tests/CodexNotchTests/CodexUsageClientTests.swift
+      - "manual: inspect both progress bars and labels in the open menu on a real Mac"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: pending
