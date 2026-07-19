@@ -4,11 +4,13 @@ struct UsageResponseDTO: Decodable {
     let primaryWindow: WindowDTO?
     let secondaryWindow: WindowDTO?
     let rateLimit: RateLimitDTO?
+    let rateLimitResetCredits: ResetCreditsDTO?
 
     enum CodingKeys: String, CodingKey {
         case primaryWindow = "primary_window"
         case secondaryWindow = "secondary_window"
         case rateLimit = "rate_limit"
+        case rateLimitResetCredits = "rate_limit_reset_credits"
     }
 
     func snapshot(fetchedAt: Date = .now) -> UsageSnapshot {
@@ -22,8 +24,14 @@ struct UsageResponseDTO: Decodable {
 
         return UsageSnapshot(
             windows: windows,
+            availableResetCredits: availableResetCredits,
             fetchedAt: fetchedAt
         )
+    }
+
+    private var availableResetCredits: Int? {
+        guard let count = rateLimitResetCredits?.availableCount, count >= 0 else { return nil }
+        return count
     }
 
     private func makeWindow(id: String, dto: WindowDTO?) -> UsageWindow? {
@@ -40,6 +48,14 @@ struct UsageResponseDTO: Decodable {
             resetAt: dto.resetAt,
             durationSeconds: TimeInterval(seconds)
         )
+    }
+}
+
+struct ResetCreditsDTO: Decodable {
+    let availableCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case availableCount = "available_count"
     }
 }
 

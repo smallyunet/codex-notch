@@ -6,6 +6,7 @@ CodexNotch is a small, native macOS menu bar app that shows your remaining weekl
 
 - Displays `68%` beside a system icon in the macOS menu bar.
 - Visualizes the remaining weekly quota and time until reset with two progress bars.
+- Shows available rate-limit reset credits when the usage response provides them.
 - Refreshes automatically every 60 seconds and supports manual refresh.
 - Opens the installed ChatGPT/Codex app from the menu.
 - Uses no telemetry, analytics, updater, browser view, or third-party package.

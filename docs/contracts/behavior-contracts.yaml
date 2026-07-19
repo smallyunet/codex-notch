@@ -108,3 +108,25 @@ contracts:
     supersedes: []
     superseded_by: null
     last_verified_commit: pending
+
+  - id: RESET-CREDITS-006
+    title: Available rate-limit reset credits are shown without fabrication
+    status: active
+    statement: When the existing usage response includes a nonnegative rate_limit_reset_credits.available_count value, the status menu displays that count in a separate labeled row. Zero is displayed as an available count, while a missing or invalid value hides the row. The app does not infer a total credit capacity or merge this count with the weekly automatic reset time.
+    rationale: Reset credits are useful actionable quota information, but their meaning must remain distinct from the weekly window and absent values must not be misrepresented.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: medium
+    scope:
+      include: [usage-parsing, status-menu, reset-credits]
+      exclude: [credit-redemption, inferred-credit-capacity, additional-network-requests]
+    examples:
+      positive: An available_count of 2 is displayed as 2 available, and zero is displayed as 0 available.
+      negative: A missing available_count is displayed as zero or as a progress percentage.
+    guards:
+      - Tests/CodexNotchTests/CodexUsageClientTests.swift
+      - Tests/CodexNotchTests/MenuBarTextTests.swift
+      - "manual: inspect the reset-credit row in the open menu on a real Mac"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: pending

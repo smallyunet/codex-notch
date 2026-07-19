@@ -196,8 +196,10 @@ struct QuotaProgressPresentation: Equatable {
     let resetValue: String
     let resetDetail: String?
     let resetProgress: Double?
+    let resetCreditsValue: String?
 
     init(snapshot: UsageSnapshot?, error: MenuBarErrorState?, now: Date) {
+        resetCreditsValue = snapshot?.availableResetCredits.map { "\($0) available" }
         guard let weekly = snapshot?.weeklyWindow else {
             switch error {
             case .signInRequired:
@@ -253,9 +255,11 @@ struct QuotaProgressPresentation: Equatable {
 final class QuotaProgressMenuView: NSView {
     static let width: CGFloat = 260
     static let height: CGFloat = 116
+    static let heightWithResetCredits: CGFloat = 124
 
     init(presentation: QuotaProgressPresentation) {
-        super.init(frame: NSRect(x: 0, y: 0, width: Self.width, height: Self.height))
+        let viewHeight = presentation.resetCreditsValue == nil ? Self.height : Self.heightWithResetCredits
+        super.init(frame: NSRect(x: 0, y: 0, width: Self.width, height: viewHeight))
         translatesAutoresizingMaskIntoConstraints = false
 
         let quotaRow = Self.labelRow(title: "Weekly remaining", value: presentation.quotaValue)
@@ -289,10 +293,15 @@ final class QuotaProgressMenuView: NSView {
             stack.addArrangedSubview(detailLabel)
             detailLabel.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }
+        if let creditsValue = presentation.resetCreditsValue {
+            let creditsRow = Self.labelRow(title: "Reset credits", value: creditsValue)
+            stack.addArrangedSubview(creditsRow)
+            creditsRow.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
 
         NSLayoutConstraint.activate([
             widthAnchor.constraint(equalToConstant: Self.width),
-            heightAnchor.constraint(equalToConstant: Self.height),
+            heightAnchor.constraint(equalToConstant: viewHeight),
             stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
             stack.topAnchor.constraint(equalTo: topAnchor, constant: 10)

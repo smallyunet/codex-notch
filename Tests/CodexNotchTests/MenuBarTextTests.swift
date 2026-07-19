@@ -116,9 +116,54 @@ final class MenuBarTextTests: XCTestCase {
         XCTAssertEqual(view.frame.size.height, QuotaProgressMenuView.height)
     }
 
+    func testResetCreditsShowAvailableCountIncludingZeroAndHideWhenMissing() {
+        let twoCredits = UsageSnapshot(windows: [], availableResetCredits: 2)
+        let zeroCredits = UsageSnapshot(windows: [], availableResetCredits: 0)
+        let missingCredits = UsageSnapshot(windows: [])
+
+        XCTAssertEqual(
+            QuotaProgressPresentation(snapshot: twoCredits, error: nil, now: .now).resetCreditsValue,
+            "2 available"
+        )
+        XCTAssertEqual(
+            QuotaProgressPresentation(snapshot: zeroCredits, error: nil, now: .now).resetCreditsValue,
+            "0 available"
+        )
+        XCTAssertNil(
+            QuotaProgressPresentation(snapshot: missingCredits, error: nil, now: .now).resetCreditsValue
+        )
+    }
+
+    func testProgressMenuShowsResetCreditsRowOnlyWhenAvailable() {
+        let visiblePresentation = QuotaProgressPresentation(
+            snapshot: UsageSnapshot(windows: [], availableResetCredits: 2),
+            error: nil,
+            now: .now
+        )
+        let hiddenPresentation = QuotaProgressPresentation(
+            snapshot: UsageSnapshot(windows: []),
+            error: nil,
+            now: .now
+        )
+
+        let visibleView = QuotaProgressMenuView(presentation: visiblePresentation)
+        let hiddenView = QuotaProgressMenuView(presentation: hiddenPresentation)
+
+        XCTAssertTrue(textValues(in: visibleView).contains("Reset credits"))
+        XCTAssertTrue(textValues(in: visibleView).contains("2 available"))
+        XCTAssertFalse(textValues(in: hiddenView).contains("Reset credits"))
+        XCTAssertEqual(visibleView.frame.height, QuotaProgressMenuView.heightWithResetCredits)
+    }
+
     private func progressIndicators(in view: NSView) -> [NSProgressIndicator] {
         view.subviews.flatMap { child in
             (child as? NSProgressIndicator).map { [$0] } ?? progressIndicators(in: child)
+        }
+    }
+
+    private func textValues(in view: NSView) -> [String] {
+        view.subviews.flatMap { child in
+            (child as? NSTextField).map { [$0.stringValue] } ?? textValues(in: child)
         }
     }
 }

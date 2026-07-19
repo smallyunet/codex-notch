@@ -17,7 +17,7 @@ The previous implementation used a transparent panel around the physical notch a
 ## Decision
 
 - Use one `NSStatusItem` containing a system icon and the rounded remaining weekly percentage.
-- Keep only the local auth reader, the read-only ChatGPT usage request, quota classification, and a small status menu with native remaining-quota and reset-time progress bars.
+- Keep only the local auth reader, the read-only ChatGPT usage request, quota classification, and a small status menu with native remaining-quota and reset-time progress bars plus the available reset-credit count.
 - Remove all notch panels, SwiftUI surfaces, screen monitoring, session-log parsing, conversation navigation, and related settings.
 - Use an ephemeral network session with no cache or cookies and reject redirects to a different host.
 

@@ -23,6 +23,7 @@ final class CodexUsageClientTests: XCTestCase {
         XCTAssertEqual(snapshot.windows.first?.kind, .weekly)
         XCTAssertEqual(snapshot.windows.first?.usedPercent, 5)
         XCTAssertEqual(snapshot.windows.first?.durationSeconds, 604_800)
+        XCTAssertEqual(snapshot.availableResetCredits, 2)
     }
 
     func testMultipleWindowsAreClassifiedIndependently() async throws {
@@ -35,6 +36,7 @@ final class CodexUsageClientTests: XCTestCase {
 
         XCTAssertEqual(snapshot.windows.map(\.kind), [.rolling(hours: 5), .weekly])
         XCTAssertEqual(snapshot.windows.map(\.id), ["primary", "secondary"])
+        XCTAssertEqual(snapshot.availableResetCredits, 1)
     }
 
     func testCurrentResponseReadsWindowsNestedUnderRateLimit() async throws {

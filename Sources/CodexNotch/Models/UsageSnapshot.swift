@@ -35,13 +35,16 @@ struct UsageWindow: Equatable, Identifiable, Sendable {
 
 struct UsageSnapshot: Equatable, Sendable {
     let windows: [UsageWindow]
+    let availableResetCredits: Int?
     let fetchedAt: Date
 
     init(
         windows: [UsageWindow],
+        availableResetCredits: Int? = nil,
         fetchedAt: Date = .now
     ) {
         self.windows = windows
+        self.availableResetCredits = availableResetCredits
         self.fetchedAt = fetchedAt
     }
 
