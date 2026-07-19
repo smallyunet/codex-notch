@@ -1,6 +1,21 @@
 import AppKit
 import Foundation
 
+enum MenuBarButtonStyle {
+    static let fontSize: CGFloat = 12
+
+    static func apply(to button: NSButton) {
+        let image = NSImage(systemSymbolName: "chart.pie.fill", accessibilityDescription: "Codex quota")
+        image?.isTemplate = true
+        button.image = image
+        button.imagePosition = .imageLeading
+        button.imageHugsTitle = true
+        button.alignment = .center
+        button.font = .monospacedDigitSystemFont(ofSize: fontSize, weight: .medium)
+        button.toolTip = "Codex weekly quota"
+    }
+}
+
 final class MenuBarController: NSObject {
     static let refreshInterval: TimeInterval = 60
 
@@ -46,13 +61,8 @@ final class MenuBarController: NSObject {
 
     private func configureStatusButton() {
         guard let button = statusItem.button else { return }
-        let image = NSImage(systemSymbolName: "chart.pie.fill", accessibilityDescription: "Codex quota")
-        image?.isTemplate = true
-        button.image = image
-        button.imagePosition = .imageLeading
-        button.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+        MenuBarButtonStyle.apply(to: button)
         button.title = MenuBarText.statusTitle(snapshot: nil)
-        button.toolTip = "Codex weekly quota"
     }
 
     @objc private func refreshNow() {

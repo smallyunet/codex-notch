@@ -1,8 +1,20 @@
+import AppKit
 import Foundation
 import XCTest
 @testable import CodexNotch
 
 final class MenuBarTextTests: XCTestCase {
+    func testStatusButtonUsesCompactNativeImageAndTitleLayout() {
+        let button = NSButton(frame: .zero)
+
+        MenuBarButtonStyle.apply(to: button)
+
+        XCTAssertTrue(button.imageHugsTitle)
+        XCTAssertEqual(button.imagePosition, .imageLeading)
+        XCTAssertEqual(button.alignment, .center)
+        XCTAssertEqual(button.font?.pointSize, MenuBarButtonStyle.fontSize)
+    }
+
     func testStatusTitleShowsRoundedWeeklyRemainingPercent() {
         let snapshot = UsageSnapshot(
             windows: [UsageWindow(id: "weekly", kind: .weekly, usedPercent: 31.6)]

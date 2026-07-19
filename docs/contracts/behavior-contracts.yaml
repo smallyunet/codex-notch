@@ -2,8 +2,8 @@ contracts:
   - id: MENU-BAR-001
     title: The quota is presented only in the macOS menu bar
     status: active
-    statement: The app displays a system icon and the rounded remaining weekly percentage in one NSStatusItem. It creates no notch overlay, floating panel, Dock icon, or ordinary app window.
-    rationale: A menu bar item works consistently across Macs and avoids screen geometry, pointer interception, and overlay privacy risks.
+    statement: The app displays a system icon and the rounded remaining weekly percentage in one variable-length NSStatusItem. The icon hugs the title so both are centered as one compact unit, while the status item retains native macOS outer spacing and click behavior. It creates no notch overlay, floating panel, Dock icon, or ordinary app window.
+    rationale: Native compact image-title layout matches surrounding menu bar items without fragile negative spacing or a reduced click target, and avoids screen geometry, pointer interception, and overlay privacy risks.
     source: user-confirmed
     owner: project-maintainer
     risk: medium
@@ -11,8 +11,8 @@ contracts:
       include: [menu-bar, status-menu]
       exclude: [notch-overlay, session-state]
     examples:
-      positive: The menu bar shows an icon followed by 68% and opens a small quota menu.
-      negative: A transparent panel is positioned around the physical camera notch.
+      positive: The menu bar shows an icon directly adjacent to 68% as one centered unit and opens a small quota menu.
+      negative: The icon is pinned to one edge with excessive space before the number, or a transparent panel is positioned around the physical camera notch.
     guards:
       - Tests/CodexNotchTests/MenuBarTextTests.swift
       - "manual: inspect icon and percentage spacing on a real Mac"
