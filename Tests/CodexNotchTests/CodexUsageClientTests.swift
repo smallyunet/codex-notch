@@ -22,7 +22,6 @@ final class CodexUsageClientTests: XCTestCase {
         XCTAssertEqual(snapshot.windows.count, 1)
         XCTAssertEqual(snapshot.windows.first?.kind, .weekly)
         XCTAssertEqual(snapshot.windows.first?.usedPercent, 5)
-        XCTAssertEqual(snapshot.resetCreditsAvailable, 2)
     }
 
     func testMultipleWindowsAreClassifiedIndependently() async throws {
@@ -49,35 +48,17 @@ final class CodexUsageClientTests: XCTestCase {
         XCTAssertEqual(snapshot.windows.first?.kind, .weekly)
         XCTAssertEqual(snapshot.windows.first?.usedPercent, 20)
         XCTAssertEqual(snapshot.windows.first?.remainingPercent, 80)
-        XCTAssertEqual(snapshot.resetCreditsAvailable, 2)
     }
 
-    func testResetCreditDetailsUseTheDedicatedEndpointAndKeepAvailableCredits() async throws {
-        let usageData = try Data(contentsOf: fixtureURL("usage-weekly-only.json"))
-        let resetCreditData = try Data(contentsOf: fixtureURL("rate-limit-reset-credits.json"))
+    func testRequestDisablesCaching() async throws {
+        let responseData = try Data(contentsOf: fixtureURL("usage-weekly-only.json"))
         MockURLProtocol.requestHandler = { request in
-            switch request.url?.path {
-            case "/backend-api/wham/usage":
-                return (self.response(status: 200), usageData)
-            case "/backend-api/wham/rate-limit-reset-credits":
-                return (self.response(status: 200), resetCreditData)
-            default:
-                XCTFail("Unexpected endpoint: \(request.url?.absoluteString ?? "nil")")
-                return (self.response(status: 404), Data())
-            }
+            XCTAssertEqual(request.cachePolicy, .reloadIgnoringLocalCacheData)
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
+            return (self.response(status: 200), responseData)
         }
 
-        let snapshot = try await makeClient().fetch()
-
-        XCTAssertEqual(snapshot.resetCreditsAvailable, 5)
-        XCTAssertEqual(snapshot.resetCredits.map(\.id), [
-            "credit-july-18",
-            "credit-july-27",
-            "credit-august-1",
-            "credit-august-12",
-            "credit-august-13"
-        ])
-        XCTAssertEqual(snapshot.resetCredits.map(\.title), Array(repeating: "Full reset", count: 5))
+        _ = try await makeClient().fetch()
     }
 
     func testUnauthorizedResponseRequiresReauthentication() async throws {
@@ -90,6 +71,27 @@ final class CodexUsageClientTests: XCTestCase {
             XCTFail("Expected a reauthentication error")
         } catch let error as CodexUsageError {
             XCTAssertEqual(error, .reauthenticationRequired)
+        }
+    }
+
+    func testPlainHTTPIsRejectedBeforeSendingCredentials() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [MockURLProtocol.self]
+        MockURLProtocol.requestHandler = { _ in
+            XCTFail("An insecure request must not be sent")
+            return (self.response(status: 500), Data())
+        }
+        let client = CodexUsageClient(
+            credentials: CodexCredentials(accessToken: "fixture-access-token", accountID: nil),
+            session: URLSession(configuration: configuration),
+            endpoint: URL(string: "http://example.test/backend-api/wham/usage")!
+        )
+
+        do {
+            _ = try await client.fetch()
+            XCTFail("Expected an invalid response error")
+        } catch let error as CodexUsageError {
+            XCTAssertEqual(error, .invalidHTTPResponse)
         }
     }
 

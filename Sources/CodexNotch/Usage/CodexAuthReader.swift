@@ -16,6 +16,8 @@ protocol CredentialsReading: Sendable {
 }
 
 struct CodexAuthReader: CredentialsReading {
+    static let maximumAuthFileSize = 1_048_576
+
     let environment: [String: String]
     let homeDirectory: URL
 
@@ -32,7 +34,15 @@ struct CodexAuthReader: CredentialsReading {
 
         let data: Data
         do {
+            let values = try authURL.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+            guard values.isRegularFile == true,
+                  let fileSize = values.fileSize,
+                  fileSize <= Self.maximumAuthFileSize else {
+                throw CodexAuthError.invalidAuthFormat
+            }
             data = try Data(contentsOf: authURL)
+        } catch let error as CodexAuthError {
+            throw error
         } catch {
             throw CodexAuthError.authFileUnavailable
         }

@@ -1,19 +1,13 @@
-import SwiftUI
+import AppKit
 
 @main
-struct CodexNotchApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-
-    var body: some Scene {
-        Settings {
-            NotchSettingsView()
-        }
-        .commands {
-            CommandGroup(replacing: .appSettings) {
-                SettingsLink {
-                    Text("设置…")
-                }
-            }
+enum CodexNotchApp {
+    static func main() {
+        let application = NSApplication.shared
+        let delegate = AppDelegate()
+        application.delegate = delegate
+        withExtendedLifetime(delegate) {
+            application.run()
         }
     }
 }

@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag matches app version
+        run: |
+          version="$(plutil -extract CFBundleShortVersionString raw -o - Resources/Info.plist)"
+          test "${GITHUB_REF_NAME}" = "v${version}"
+          printf '%s\n' "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
+
+      - name: Build and verify universal app
+        env:
+          ARCHITECTURES: arm64 x86_64
+          ARCHIVE_ARCH: universal
+          EXPECTED_ARCHITECTURES: arm64 x86_64
+        run: ./scripts/release.sh
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(plutil -extract CFBundleShortVersionString raw -o - Resources/Info.plist)"
+          archive="dist/CodexNotch-${version}-macOS-universal.zip"
+          gh release create "${GITHUB_REF_NAME}" \
+            "${archive}" \
+            "${archive}.sha256" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --generate-notes \
+            --title "CodexNotch ${GITHUB_REF_NAME}"

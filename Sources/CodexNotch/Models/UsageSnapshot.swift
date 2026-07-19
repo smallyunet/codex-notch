@@ -25,42 +25,15 @@ struct UsageWindow: Equatable, Identifiable, Sendable {
     }
 }
 
-struct ResetCredit: Equatable, Identifiable, Sendable {
-    let id: String
-    let title: String?
-    let expiresAt: Date?
-
-    init(id: String, title: String? = nil, expiresAt: Date? = nil) {
-        self.id = id
-        self.title = title
-        self.expiresAt = expiresAt
-    }
-}
-
 struct UsageSnapshot: Equatable, Sendable {
     let windows: [UsageWindow]
-    let resetCreditsAvailable: Int?
-    let resetCredits: [ResetCredit]
     let fetchedAt: Date
 
     init(
         windows: [UsageWindow],
-        resetCreditsAvailable: Int? = nil,
-        resetCredits: [ResetCredit] = [],
         fetchedAt: Date = .now
     ) {
         self.windows = windows
-        self.resetCreditsAvailable = resetCreditsAvailable
-        self.resetCredits = resetCredits.sorted { lhs, rhs in
-            switch (lhs.expiresAt, rhs.expiresAt) {
-            case let (lhsDate?, rhsDate?):
-                return lhsDate < rhsDate
-            case (.some, .none):
-                return true
-            default:
-                return false
-            }
-        }
         self.fetchedAt = fetchedAt
     }
 
@@ -71,18 +44,6 @@ struct UsageSnapshot: Equatable, Sendable {
         }
     }
 
-    func replacingResetCredits(
-        availableCount: Int?,
-        credits: [ResetCredit]
-    ) -> UsageSnapshot {
-        UsageSnapshot(
-            windows: windows,
-            resetCreditsAvailable: availableCount
-                ?? (credits.isEmpty ? resetCreditsAvailable : credits.count),
-            resetCredits: credits.isEmpty ? resetCredits : credits,
-            fetchedAt: fetchedAt
-        )
-    }
 }
 
 enum WeeklyQuotaLevel: Equatable, Sendable {

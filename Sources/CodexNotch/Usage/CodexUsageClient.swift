@@ -7,65 +7,75 @@ enum CodexUsageError: Error, Equatable {
     case decodingFailed
 }
 
+enum SecureUsageSession {
+    static func make() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        configuration.urlCache = nil
+        configuration.httpCookieStorage = nil
+        configuration.httpShouldSetCookies = false
+        configuration.timeoutIntervalForRequest = 15
+        configuration.timeoutIntervalForResource = 20
+        return URLSession(
+            configuration: configuration,
+            delegate: SameHostHTTPSRedirectDelegate(),
+            delegateQueue: nil
+        )
+    }
+}
+
+private final class SameHostHTTPSRedirectDelegate: NSObject, URLSessionTaskDelegate {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        guard request.url?.scheme == "https",
+              request.url?.host == task.originalRequest?.url?.host else {
+            completionHandler(nil)
+            return
+        }
+        completionHandler(request)
+    }
+}
+
 struct CodexUsageClient {
     static let defaultEndpoint = URL(string: "https://chatgpt.com/backend-api/wham/usage")!
-    static let defaultResetCreditsEndpoint = URL(
-        string: "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits"
-    )!
 
     let credentials: CodexCredentials
     let session: URLSession
     let endpoint: URL
-    let resetCreditsEndpoint: URL
 
     init(credentials: CodexCredentials,
-         session: URLSession = .shared,
-         endpoint: URL = CodexUsageClient.defaultEndpoint,
-         resetCreditsEndpoint: URL? = nil) {
+         session: URLSession = SecureUsageSession.make(),
+         endpoint: URL = CodexUsageClient.defaultEndpoint) {
         self.credentials = credentials
         self.session = session
         self.endpoint = endpoint
-        self.resetCreditsEndpoint = resetCreditsEndpoint
-            ?? (endpoint == Self.defaultEndpoint
-                ? Self.defaultResetCreditsEndpoint
-                : endpoint.deletingLastPathComponent().appendingPathComponent("rate-limit-reset-credits"))
     }
 
     func fetch() async throws -> UsageSnapshot {
         let data = try await fetchData(from: endpoint)
-        let usageResponse: UsageResponseDTO
         do {
-            usageResponse = try JSONDecoder().decode(UsageResponseDTO.self, from: data)
-        } catch {
-            throw CodexUsageError.decodingFailed
-        }
-
-        let usageSnapshot = usageResponse.snapshot()
-
-        // Credit detail is an auxiliary endpoint. A failure must not hide a
-        // successfully fetched weekly quota or the count returned by /usage.
-        guard let resetCredits = try? await fetchResetCredits() else {
-            return usageSnapshot
-        }
-
-        return usageSnapshot.replacingResetCredits(
-            availableCount: resetCredits.availableCount,
-            credits: resetCredits.availableCredits
-        )
-    }
-
-    private func fetchResetCredits() async throws -> ResetCreditsDTO {
-        let data = try await fetchData(from: resetCreditsEndpoint)
-        do {
-            return try JSONDecoder().decode(ResetCreditsDTO.self, from: data)
+            return try JSONDecoder().decode(UsageResponseDTO.self, from: data).snapshot()
         } catch {
             throw CodexUsageError.decodingFailed
         }
     }
 
     private func fetchData(from endpoint: URL) async throws -> Data {
-        var request = URLRequest(url: endpoint)
+        guard endpoint.scheme == "https" else {
+            throw CodexUsageError.invalidHTTPResponse
+        }
+        var request = URLRequest(
+            url: endpoint,
+            cachePolicy: .reloadIgnoringLocalCacheData,
+            timeoutInterval: 15
+        )
         request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(credentials.accessToken)", forHTTPHeaderField: "Authorization")
         if let accountID = credentials.accountID, !accountID.isEmpty {
             request.setValue(accountID, forHTTPHeaderField: "ChatGPT-Account-Id")

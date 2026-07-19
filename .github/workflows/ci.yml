@@ -2,12 +2,17 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  test:
+  verify:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
-      - name: Run tests
-        run: swift test
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - name: Verify tests and app bundle
+        run: ./scripts/verify.sh

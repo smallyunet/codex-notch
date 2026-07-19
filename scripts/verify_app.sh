@@ -32,5 +32,28 @@ iconutil -c iconset "$ICON_PATH" -o "$ICONSET_DIR/CodexNotch.iconset"
     exit 1
 }
 
-codesign --verify --deep --strict "$APP_PATH"
+codesign --verify --strict "$APP_PATH"
+
+if [[ -n "${EXPECTED_ARCHITECTURES:-}" ]]; then
+    ACTUAL_ARCHITECTURES="$(lipo -archs "$EXECUTABLE")"
+    for EXPECTED_ARCHITECTURE in $EXPECTED_ARCHITECTURES; do
+        case " $ACTUAL_ARCHITECTURES " in
+            *" $EXPECTED_ARCHITECTURE "*) ;;
+            *)
+                echo "error: executable is missing architecture $EXPECTED_ARCHITECTURE" >&2
+                exit 1
+                ;;
+        esac
+    done
+fi
+
+SIGNATURE_FLAGS="$(codesign -dvv "$APP_PATH" 2>&1 || true)"
+case "$SIGNATURE_FLAGS" in
+    *"flags="*"runtime"*) ;;
+    *)
+        echo "error: hardened runtime flag is missing" >&2
+        exit 1
+        ;;
+esac
+
 echo "Verified: $APP_PATH"

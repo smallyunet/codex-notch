@@ -23,11 +23,10 @@
   <rect width="1024" height="1024" rx="226" fill="url(#background)"/>
   <rect x="26" y="26" width="972" height="972" rx="204" fill="none" stroke="#8affae" stroke-opacity=".12" stroke-width="4"/>
 
-  <!-- A terminal window, not a floating bowl: squared composition and a clear command prompt. -->
+  <!-- A compact terminal identity with a clear command prompt. -->
   <rect x="112" y="156" width="800" height="712" rx="112" fill="#020604" stroke="#2d6f4a" stroke-opacity=".72" stroke-width="10"/>
   <rect x="130" y="174" width="764" height="676" rx="94" fill="url(#terminal)"/>
   <path d="M130 330h764" stroke="#5cf495" stroke-opacity=".18" stroke-width="4"/>
-  <rect x="378" y="174" width="268" height="74" rx="37" fill="#020604"/>
   <circle cx="212" cy="252" r="14" fill="#4df58c"/>
   <circle cx="256" cy="252" r="14" fill="#4df58c" fill-opacity=".52"/>
   <circle cx="300" cy="252" r="14" fill="#4df58c" fill-opacity=".20"/>
