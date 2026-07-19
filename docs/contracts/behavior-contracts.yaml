@@ -18,7 +18,7 @@ contracts:
       - "manual: inspect icon and percentage spacing on a real Mac"
     supersedes: []
     superseded_by: null
-    last_verified_commit: 8bd1251
+    last_verified_commit: 23b1418
 
   - id: QUOTA-SEMANTICS-002
     title: The displayed number is the remaining weekly percentage
@@ -40,7 +40,7 @@ contracts:
       - Tests/CodexNotchTests/CodexUsageClientTests.swift
     supersedes: []
     superseded_by: null
-    last_verified_commit: 8bd1251
+    last_verified_commit: 23b1418
 
   - id: PRIVACY-BOUNDARY-003
     title: Credentials and private Codex data remain minimally exposed
@@ -62,7 +62,7 @@ contracts:
       - "manual: sensitive string and executable dependency review"
     supersedes: []
     superseded_by: null
-    last_verified_commit: 8bd1251
+    last_verified_commit: 23b1418
 
   - id: PACKAGE-RELEASE-004
     title: Version tags produce verified GitHub release artifacts
@@ -85,4 +85,4 @@ contracts:
       - scripts/verify_app.sh
     supersedes: []
     superseded_by: null
-    last_verified_commit: 8bd1251
+    last_verified_commit: 23b1418

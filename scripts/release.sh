@@ -19,5 +19,17 @@ RUN_TESTS="${RUN_TESTS:-1}" \
 
 rm -f "$ARCHIVE_PATH"
 ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ARCHIVE_PATH"
-shasum -a 256 "$ARCHIVE_PATH" | tee "$ARCHIVE_PATH.sha256"
+ARCHIVE_DIRECTORY="$(dirname "$ARCHIVE_PATH")"
+ARCHIVE_NAME="$(basename "$ARCHIVE_PATH")"
+(
+    cd "$ARCHIVE_DIRECTORY"
+    shasum -a 256 "$ARCHIVE_NAME"
+) | tee "$ARCHIVE_PATH.sha256"
+
+CHECKSUM_TARGET="$(awk 'NR == 1 { print $2 }' "$ARCHIVE_PATH.sha256")"
+if [[ "$CHECKSUM_TARGET" != "$ARCHIVE_NAME" ]]; then
+    echo "error: checksum must reference the portable archive filename" >&2
+    exit 1
+fi
+
 echo "Release archive: $ARCHIVE_PATH"
