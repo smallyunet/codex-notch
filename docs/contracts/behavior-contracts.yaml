@@ -45,14 +45,14 @@ contracts:
   - id: PRIVACY-BOUNDARY-003
     title: Credentials and private Codex data remain minimally exposed
     status: active
-    statement: The app reads only the bounded local auth file, keeps credentials in process memory, sends them only over HTTPS to the original ChatGPT usage host, and never scans sessions, reads prompts, logs sensitive data, caches responses, or stores cookies.
+    statement: The app reads only the bounded local auth file, keeps credentials in process memory, sends them only over HTTPS to the original ChatGPT usage host, and never attaches them to the separate unauthenticated GitHub release check. It never scans sessions, reads prompts, logs sensitive data, caches responses, or stores cookies.
     rationale: The app handles an access token and must minimize both data access and exfiltration paths.
     source: security-review
     owner: project-maintainer
     risk: critical
     scope:
       include: [auth-reader, usage-client, network-session]
-      exclude: [conversation-monitoring, telemetry, auto-update]
+      exclude: [conversation-monitoring, telemetry, automatic-download, automatic-install]
     examples:
       positive: One ephemeral GET request obtains usage and no response body is persisted.
       negative: A rollout JSONL file is parsed or an authenticated redirect is followed to another host.
@@ -105,6 +105,27 @@ contracts:
       - Tests/CodexNotchTests/MenuBarTextTests.swift
       - Tests/CodexNotchTests/CodexUsageClientTests.swift
       - "manual: inspect both progress bars and labels in the open menu on a real Mac"
+    supersedes: []
+    superseded_by: null
+    last_verified_commit: pending
+
+  - id: UPDATE-CHECK-007
+    title: Update checks are manual, bounded, and informational
+    status: active
+    statement: The menu shows the installed app version and checks for updates only when the user requests it. The check uses an ephemeral uncached HTTPS request without credentials to the fixed GitHub API repository endpoint, accepts release links only for the same repository on github.com, and never downloads or installs an update automatically.
+    rationale: Users can discover releases without adding a persistent updater, third-party dependency, credential exposure, or silent code replacement.
+    source: user-confirmed
+    owner: project-maintainer
+    risk: high
+    scope:
+      include: [status-menu, version-display, github-release-check]
+      exclude: [background-check, telemetry, automatic-download, automatic-install]
+    examples:
+      positive: Clicking Check for Updates reports that v0.6.0 is available and offers its GitHub release page.
+      negative: The app checks in the background, sends an Authorization header to GitHub, or replaces itself.
+    guards:
+      - Tests/CodexNotchTests/UpdateServiceTests.swift
+      - "manual: inspect version and update-check states in the open menu on a real Mac"
     supersedes: []
     superseded_by: null
     last_verified_commit: pending
