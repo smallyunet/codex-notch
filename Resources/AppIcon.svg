@@ -23,9 +23,11 @@
   <rect width="1024" height="1024" rx="226" fill="url(#background)"/>
   <rect x="26" y="26" width="972" height="972" rx="204" fill="none" stroke="#8affae" stroke-opacity=".12" stroke-width="4"/>
 
-  <!-- A compact terminal identity with a clear command prompt. -->
+  <!-- A compact terminal identity with a top notch and clear command prompt. -->
   <rect x="112" y="156" width="800" height="712" rx="112" fill="#020604" stroke="#2d6f4a" stroke-opacity=".72" stroke-width="10"/>
   <rect x="130" y="174" width="764" height="676" rx="94" fill="url(#terminal)"/>
+  <rect x="382" y="154" width="260" height="104" rx="52" fill="#020604"/>
+  <rect x="406" y="174" width="212" height="54" rx="27" fill="#091811" stroke="#65f49a" stroke-opacity=".28" stroke-width="4"/>
   <path d="M130 330h764" stroke="#5cf495" stroke-opacity=".18" stroke-width="4"/>
   <circle cx="212" cy="252" r="14" fill="#4df58c"/>
   <circle cx="256" cy="252" r="14" fill="#4df58c" fill-opacity=".52"/>

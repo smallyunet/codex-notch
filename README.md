@@ -1,5 +1,9 @@
 # CodexNotch
 
+<p align="center">
+  <img src="Resources/AppIcon.svg" alt="CodexNotch app icon" width="128">
+</p>
+
 CodexNotch is a small, native macOS menu bar app that shows your remaining weekly ChatGPT Codex quota as an icon and percentage.
 
 ## What it does
