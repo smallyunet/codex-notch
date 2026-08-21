@@ -17,9 +17,14 @@ INFO_PLIST="$APP_PATH/Contents/Info.plist"
 plutil -lint "$INFO_PLIST"
 
 ICON_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$INFO_PLIST" 2>/dev/null || true)"
+ICON_ASSET_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$INFO_PLIST" 2>/dev/null || true)"
 ICON_PATH="$APP_PATH/Contents/Resources/${ICON_NAME}.icns"
 [[ "$ICON_NAME" == "CodexNotch" ]] || {
     echo "error: CFBundleIconFile must be CodexNotch" >&2
+    exit 1
+}
+[[ "$ICON_ASSET_NAME" == "CodexNotch" ]] || {
+    echo "error: CFBundleIconName must be CodexNotch" >&2
     exit 1
 }
 [[ -f "$ICON_PATH" ]] || { echo "error: app icon missing: $ICON_PATH" >&2; exit 1; }
